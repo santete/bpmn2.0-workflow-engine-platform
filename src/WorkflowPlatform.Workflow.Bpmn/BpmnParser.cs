@@ -23,7 +23,8 @@ public static class BpmnParser
             {
                 var id = (string?)el.Attribute("id");
                 if (string.IsNullOrEmpty(id)) continue;
-                nodes[id] = new BpmnNode(id, (string?)el.Attribute("name") ?? id, kind);
+                var assignee = kind == NodeKind.UserTask ? (string?)el.Attribute("assignee") : null;
+                nodes[id] = new BpmnNode(id, (string?)el.Attribute("name") ?? id, kind, assignee);
             }
         }
         Add("startEvent", NodeKind.Start);

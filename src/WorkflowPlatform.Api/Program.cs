@@ -138,7 +138,7 @@ app.Run();
 
 static string ToXml(ProcessDefinitionSpec spec)
     => BpmnBuilder.Build(spec.Key, spec.Name,
-        spec.Steps.Select(s => (s.Id, s.Name)).ToList(), spec.EndsWithDecision);
+        spec.Steps.Select(s => (s.Id, s.Name, (string?)null)).ToList(), spec.EndsWithDecision);
 
 public sealed record CreateDefinitionRequest(string Name, string[] Steps, bool EndsWithDecision);
 public sealed record CreateCaseRequest(string Title, string? Content, string? DefinitionKey, string? CreatedBy);

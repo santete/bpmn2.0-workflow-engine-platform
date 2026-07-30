@@ -33,4 +33,28 @@ public class WorkflowServiceTests
         Assert.Contains(publisher.Events, e => e is ProcessStarted);
         Assert.Contains(publisher.Events, e => e is TaskCreated { TaskId: "review" });
     }
+
+    [Fact]
+    public async Task TaskCompleted_event_carries_actor_decision_and_task_name()
+    {
+        var engine = new SimpleBpmnEngineAdapter();
+        var publisher = new CapturingPublisher();
+        var port = new WorkflowService(engine, publisher);
+        await port.DeployDefinitionAsync(new CanonicalBpmn("case-approval", TestBpmn.CaseApproval));
+        await port.StartProcessAsync(new StartProcessCommand(
+            "case-approval", "CASE-10", new Dictionary<string, ProcessVariable>(), "tester"));
+
+        await port.CompleteUserTaskAsync(new CompleteTaskCommand(
+            "CASE-10", "review",
+            new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum("APPROVED") },
+            "an.nguyen"));
+
+        Assert.Contains(publisher.Events, e => e is TaskCompleted
+        {
+            TaskId: "review",
+            TaskName: "Tham dinh",
+            Actor: "an.nguyen",
+            Decision: "APPROVED"
+        });
+    }
 }

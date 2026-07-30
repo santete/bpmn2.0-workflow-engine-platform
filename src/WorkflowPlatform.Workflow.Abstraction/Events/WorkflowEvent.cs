@@ -9,10 +9,10 @@ public abstract record WorkflowEvent(string BusinessKey, DateTimeOffset Occurred
 public sealed record ProcessStarted(string BusinessKey, DateTimeOffset OccurredAt)
     : WorkflowEvent(BusinessKey, OccurredAt);
 
-public sealed record TaskCreated(string BusinessKey, string TaskId, string TaskName, DateTimeOffset OccurredAt)
+public sealed record TaskCreated(string BusinessKey, string TaskId, string TaskName, string? Assignee, DateTimeOffset OccurredAt)
     : WorkflowEvent(BusinessKey, OccurredAt);
 
-public sealed record TaskCompleted(string BusinessKey, string TaskId, DateTimeOffset OccurredAt)
+public sealed record TaskCompleted(string BusinessKey, string TaskId, string TaskName, string? Actor, string? Decision, DateTimeOffset OccurredAt)
     : WorkflowEvent(BusinessKey, OccurredAt);
 
 public sealed record ProcessCompleted(string BusinessKey, DateTimeOffset OccurredAt)

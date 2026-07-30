@@ -22,7 +22,7 @@ public class BpmnBuilderTests
     [Fact]
     public void Linear_built_process_runs_to_completion()
     {
-        var xml = BpmnBuilder.Build("t", "Test", new List<(string, string)> { ("a", "A"), ("b", "B") }, endsWithDecision: false);
+        var xml = BpmnBuilder.Build("t", "Test", new List<(string, string, string?)> { ("a", "A", null), ("b", "B", null) }, endsWithDecision: false);
         var e = Deploy(xml);
 
         Assert.Equal("a", Assert.IsType<TaskCreated>(e.Start(Start("K1"))[1]).TaskId);
@@ -33,10 +33,23 @@ public class BpmnBuilderTests
     [Fact]
     public void Built_process_with_decision_supports_reject()
     {
-        var xml = BpmnBuilder.Build("t", "Test", new List<(string, string)> { ("a", "A") }, endsWithDecision: true);
+        var xml = BpmnBuilder.Build("t", "Test", new List<(string, string, string?)> { ("a", "A", null) }, endsWithDecision: true);
         var e = Deploy(xml);
         e.Start(Start("K2"));
 
         Assert.Contains(e.CompleteTask(Done("K2", "a", "REJECTED")), x => x is ProcessRejected);
+    }
+
+    [Fact]
+    public void Builder_emits_assignee_and_parser_reads_it_back()
+    {
+        var xml = BpmnBuilder.Build("t", "Test",
+            new List<(string, string, string?)> { ("a", "A", "an.nguyen"), ("b", "B", null) },
+            endsWithDecision: false);
+
+        var def = BpmnParser.Parse(xml);
+
+        Assert.Equal("an.nguyen", def.Nodes["a"].Assignee);
+        Assert.Null(def.Nodes["b"].Assignee);
     }
 }

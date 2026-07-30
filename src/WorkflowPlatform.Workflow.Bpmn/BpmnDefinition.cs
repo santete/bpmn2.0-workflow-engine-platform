@@ -2,7 +2,7 @@ namespace WorkflowPlatform.Workflow.Bpmn;
 
 public enum NodeKind { Start, UserTask, Gateway, End }
 
-public sealed record BpmnNode(string Id, string Name, NodeKind Kind);
+public sealed record BpmnNode(string Id, string Name, NodeKind Kind, string? Assignee = null);
 
 /// <summary>Một luồng nối có thể mang điều kiện (dùng cho exclusiveGateway).</summary>
 public sealed record BpmnFlow(string Id, string SourceRef, string TargetRef, string? ConditionName, string? ConditionValue);

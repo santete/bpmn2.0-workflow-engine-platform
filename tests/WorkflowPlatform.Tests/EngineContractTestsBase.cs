@@ -83,6 +83,34 @@ public abstract class EngineContractTestsBase
     }
 
     [Fact]
+    public void TaskCreated_carries_assignee_from_definition()
+    {
+        var engine = Deployed();
+        var events = engine.Start(Start("G"));
+        var created = Assert.IsType<TaskCreated>(events[1]);
+        Assert.Equal("review", created.TaskId);
+        Assert.Equal("thamdinh", created.Assignee);
+    }
+
+    [Fact]
+    public void TaskCompleted_carries_actor_decision_and_task_name()
+    {
+        var engine = Deployed();
+        engine.Start(Start("H"));
+        var cmd = new CompleteTaskCommand("H", "approve",
+            new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum("REJECTED") },
+            "lanhdao01");
+        engine.CompleteTask(Complete("H", "review"));
+        var events = engine.CompleteTask(cmd);
+
+        var completed = Assert.IsType<TaskCompleted>(events[0]);
+        Assert.Equal("approve", completed.TaskId);
+        Assert.Equal("Phe duyet", completed.TaskName);
+        Assert.Equal("lanhdao01", completed.Actor);
+        Assert.Equal("REJECTED", completed.Decision);
+    }
+
+    [Fact]
     public void GetState_reports_active_task_while_running()
     {
         var engine = Deployed();

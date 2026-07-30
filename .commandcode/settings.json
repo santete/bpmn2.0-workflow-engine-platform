@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Shell(dotnet:*)",
-      "Shell(git init -b main 2>&1 && git add -A 2>&1 && git -c user.name=\"dev\" -c user.email=\"dev@local\" commit -m \"chore: baseline M3 walking skeleton\" -q 2>&1; git log --oneline 2>&1)"
+      "Shell(git init -b main 2>&1 && git add -A 2>&1 && git -c user.name=\"dev\" -c user.email=\"dev@local\" commit -m \"chore: baseline M3 walking skeleton\" -q 2>&1; git log --oneline 2>&1)",
+      "Shell(git:*)",
+      "Shell(findstr:*)"
     ],
     "deny": [],
     "defaultMode": "default"

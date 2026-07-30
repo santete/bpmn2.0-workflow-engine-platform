@@ -52,7 +52,7 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
         if (firstStop is { Kind: NodeKind.UserTask })
         {
             instance.CurrentTaskId = firstStop.Id;
-            events.Add(new TaskCreated(command.BusinessKey, firstStop.Id, firstStop.Name, now));
+            events.Add(new TaskCreated(command.BusinessKey, firstStop.Id, firstStop.Name, firstStop.Assignee, now));
         }
         else
         {
@@ -75,14 +75,15 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
 
         var def = _definitions[instance.DefinitionKey];
         var now = DateTimeOffset.UtcNow;
-        var events = new List<WorkflowEvent> { new TaskCompleted(command.BusinessKey, command.TaskId, now) };
-
         var decision = command.Variables.TryGetValue("decision", out var dv) ? dv.Value : null;
+        var taskName = def.Nodes.TryGetValue(command.TaskId, out var completedNode) ? completedNode.Name : command.TaskId;
+        var events = new List<WorkflowEvent> { new TaskCompleted(command.BusinessKey, command.TaskId, taskName, command.Actor, decision, now) };
+
         var next = def.NextStop(command.TaskId, _ => decision);
         if (next is { Kind: NodeKind.UserTask })
         {
             instance.CurrentTaskId = next.Id;
-            events.Add(new TaskCreated(command.BusinessKey, next.Id, next.Name, now));
+            events.Add(new TaskCreated(command.BusinessKey, next.Id, next.Name, next.Assignee, now));
         }
         else
         {

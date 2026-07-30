@@ -62,7 +62,7 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
         var (next, nextTask) = Compute(def, _log.GetCompletions(command.BusinessKey));
         return new List<WorkflowEvent>
         {
-            new TaskCompleted(command.BusinessKey, command.TaskId, now),
+            new TaskCompleted(command.BusinessKey, command.TaskId, current.Name, command.Actor, decision, now),
             ToTerminalOrTask(command.BusinessKey, next, nextTask, now)
         };
     }
@@ -84,7 +84,7 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
     private static WorkflowEvent ToTerminalOrTask(string businessKey, ProcessStatus status, BpmnNode? node, DateTimeOffset now)
     {
         if (status != ProcessStatus.Completed)
-            return new TaskCreated(businessKey, node!.Id, node.Name, now);
+            return new TaskCreated(businessKey, node!.Id, node.Name, node.Assignee, now);
 
         return node is not null && node.Id.Contains("reject", StringComparison.OrdinalIgnoreCase)
             ? new ProcessRejected(businessKey, now)

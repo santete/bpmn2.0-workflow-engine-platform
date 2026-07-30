@@ -11,7 +11,7 @@ public static class BpmnBuilder
 {
     private const string Ns = "http://www.omg.org/spec/BPMN/20100524/MODEL";
 
-    public static string Build(string key, string name, IReadOnlyList<(string Id, string Name)> steps, bool endsWithDecision)
+    public static string Build(string key, string name, IReadOnlyList<(string Id, string Name, string? Assignee)> steps, bool endsWithDecision)
     {
         if (steps.Count == 0)
             throw new ArgumentException("Quy trình phải có ít nhất một bước.", nameof(steps));
@@ -22,9 +22,10 @@ public static class BpmnBuilder
         nodes.AppendLine($"    <startEvent id=\"start\" name=\"Bat dau\" />");
 
         var prev = "start";
-        foreach (var (id, stepName) in steps)
+        foreach (var (id, stepName, assignee) in steps)
         {
-            nodes.AppendLine($"    <userTask id=\"{Esc(id)}\" name=\"{Esc(stepName)}\" />");
+            var assigneeAttr = string.IsNullOrWhiteSpace(assignee) ? "" : $" assignee=\"{Esc(assignee)}\"";
+            nodes.AppendLine($"    <userTask id=\"{Esc(id)}\" name=\"{Esc(stepName)}\"{assigneeAttr} />");
             flows.AppendLine($"    <sequenceFlow id=\"flow_{Esc(prev)}_{Esc(id)}\" sourceRef=\"{Esc(prev)}\" targetRef=\"{Esc(id)}\" />");
             prev = id;
         }

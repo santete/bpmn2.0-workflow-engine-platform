@@ -9,9 +9,9 @@ internal static class TestBpmn
           <process id="case-approval" name="Case Approval" isExecutable="true">
             <startEvent id="start" name="Start" />
             <sequenceFlow id="f1" sourceRef="start" targetRef="review" />
-            <userTask id="review" name="Tham dinh" />
+            <userTask id="review" name="Tham dinh" assignee="thamdinh" />
             <sequenceFlow id="f2" sourceRef="review" targetRef="approve" />
-            <userTask id="approve" name="Phe duyet" />
+            <userTask id="approve" name="Phe duyet" assignee="lanhdao" />
             <sequenceFlow id="f3" sourceRef="approve" targetRef="gw" />
             <exclusiveGateway id="gw" name="Quyet dinh" />
             <sequenceFlow id="f4" sourceRef="gw" targetRef="end">
