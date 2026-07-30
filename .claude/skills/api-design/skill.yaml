@@ -1,0 +1,14 @@
+name: api-design
+version: "1.0"
+description: "API naming, response format, error handling, timeout conventions"
+author: framework
+dependencies: []
+load_when:
+  - D1=new-develop
+  - task_touches=api
+sources:
+  - docs/ai/API_RULES.md
+  - docs/ai/internal_rules/03_API_Naming.md
+  - docs/ai/internal_rules/04_API_Response_and_Error.md
+  - docs/ai/internal_rules/05_API_Timeout.md
+token_estimate: ~600

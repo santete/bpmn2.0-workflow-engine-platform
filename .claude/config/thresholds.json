@@ -1,0 +1,33 @@
+{
+  "_comment": "Framework runtime thresholds. Override values here to customize statusline + hooks without forking. Loaders fall back to hardcoded defaults if this file is missing or malformed.",
+  "_doc": "See guides/context-management.md for the rationale behind each value.",
+  "rotate_threshold": 120000,
+  "recent_drop_reset": 10000,
+  "metrics_tok_warn": 90000,
+  "pattern_budgets": {
+    "A": { "working": 100000, "total": 120000 },
+    "B": { "working": 120000, "total": 140000 },
+    "C": { "working": 120000, "total": 190000 }
+  },
+  "_hrs_doc": "HRS 7-signal weights (must sum to 1.0). Adjust to rebalance scoring for your project context.",
+  "hrs_weights": {
+    "cite_coverage": 0.25,
+    "schema_match": 0.25,
+    "confidence_density": 0.10,
+    "static_errors": 0.20,
+    "context_drift": 0.10,
+    "failures": 0.05,
+    "schema_staleness": 0.05
+  },
+  "_loop_doc": "Phase 3 retry budgets per gate. Exceeding triggers escalation to user.",
+  "loop_budgets": {
+    "typecheck": 3,
+    "lint_auto": 1,
+    "lint_manual": 2,
+    "test": 2
+  },
+  "_retention_doc": "Metrics event log retention. Auto-prune when either limit is hit.",
+  "metrics_retention_days": 90,
+  "metrics_max_size_mb": 100,
+  "_note_token_breakdown": "Claude Code statusline API does not provide per-type token breakdown (input/cache_read/cache_create/output). Only used_percentage is available. Token breakdown and cost estimation features have been removed to avoid user confusion. If Claude Code adds breakdown data in the future, these features can be re-enabled."
+}

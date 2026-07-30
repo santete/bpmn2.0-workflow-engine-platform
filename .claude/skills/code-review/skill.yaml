@@ -1,0 +1,13 @@
+name: code-review
+version: "1.0"
+description: "Code review checklist — quality, security, hallucination, spec compliance"
+author: framework
+dependencies: []
+load_when:
+  - phase=4
+  - D1=any
+sources:
+  - docs/ai/CODING_RULES.md
+  - docs/ai/SECURITY_RULES.md
+  - docs/ai/HALLUCINATION_RULES.md
+token_estimate: ~800

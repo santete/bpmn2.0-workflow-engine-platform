@@ -1,0 +1,12 @@
+name: git-workflow
+version: "1.0"
+description: "Branch naming, commit format, MR checklist, AI disclosure"
+author: framework
+dependencies: []
+load_when:
+  - task_touches=git
+  - phase=5
+sources:
+  - docs/ai/GIT_CONVENTION.md
+  - docs/ai/internal_rules/01_MR_Compliance.md
+token_estimate: ~500

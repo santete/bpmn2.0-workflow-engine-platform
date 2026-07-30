@@ -1,0 +1,107 @@
+using WorkflowPlatform.Workflow.Abstraction;
+using WorkflowPlatform.Workflow.Abstraction.Contracts;
+using WorkflowPlatform.Workflow.Abstraction.Events;
+using Xunit;
+
+namespace WorkflowPlatform.Tests;
+
+/// <summary>
+/// FIT-010 (engine-swap): hợp đồng mọi <see cref="IEngineAdapter"/> phải thỏa. Chạy trên ≥2 engine
+/// (Simple stored-cursor + Replay recompute) → cả hai xanh = kiến trúc tháo lắp được, không phải lời hứa.
+/// </summary>
+public abstract class EngineContractTestsBase
+{
+    protected abstract IEngineAdapter CreateEngine();
+
+    private IEngineAdapter Deployed()
+    {
+        var engine = CreateEngine();
+        engine.Deploy(new CanonicalBpmn("case-approval", TestBpmn.CaseApproval));
+        return engine;
+    }
+
+    private static StartProcessCommand Start(string key)
+        => new("case-approval", key, new Dictionary<string, ProcessVariable>(), "t");
+
+    private static CompleteTaskCommand Complete(string key, string task)
+        => new(key, task, new Dictionary<string, ProcessVariable>(), "t");
+
+    [Fact]
+    public void Start_emits_started_then_first_user_task()
+    {
+        var engine = Deployed();
+        var events = engine.Start(Start("A"));
+        Assert.Collection(events,
+            e => Assert.IsType<ProcessStarted>(e),
+            e => Assert.Equal("review", Assert.IsType<TaskCreated>(e).TaskId));
+    }
+
+    [Fact]
+    public void Completing_review_advances_to_approve()
+    {
+        var engine = Deployed();
+        engine.Start(Start("B"));
+        var events = engine.CompleteTask(Complete("B", "review"));
+        Assert.Collection(events,
+            e => Assert.Equal("review", Assert.IsType<TaskCompleted>(e).TaskId),
+            e => Assert.Equal("approve", Assert.IsType<TaskCreated>(e).TaskId));
+    }
+
+    [Fact]
+    public void Completing_approve_completes_process()
+    {
+        var engine = Deployed();
+        engine.Start(Start("C"));
+        engine.CompleteTask(Complete("C", "review"));
+        var events = engine.CompleteTask(Complete("C", "approve"));
+        Assert.Contains(events, e => e is ProcessCompleted);
+        Assert.Equal(ProcessStatus.Completed, engine.GetState("C").Status);
+    }
+
+    [Fact]
+    public void Rejecting_at_approve_ends_process_via_reject_branch()
+    {
+        var engine = Deployed();
+        engine.Start(Start("F"));
+        engine.CompleteTask(Complete("F", "review"));
+
+        var reject = new CompleteTaskCommand("F", "approve",
+            new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum("REJECTED") }, "t");
+        var events = engine.CompleteTask(reject);
+
+        Assert.Contains(events, e => e is ProcessRejected);
+        Assert.DoesNotContain(events, e => e is ProcessCompleted);
+        Assert.Equal(ProcessStatus.Completed, engine.GetState("F").Status);
+    }
+
+    [Fact]
+    public void Completing_wrong_task_is_rejected()
+    {
+        var engine = Deployed();
+        engine.Start(Start("D"));
+        Assert.Throws<InvalidOperationException>(() => engine.CompleteTask(Complete("D", "approve")));
+    }
+
+    [Fact]
+    public void GetState_reports_active_task_while_running()
+    {
+        var engine = Deployed();
+        engine.Start(Start("E"));
+        var state = engine.GetState("E");
+        Assert.Equal(ProcessStatus.Running, state.Status);
+        Assert.Equal("review", Assert.Single(state.ActiveTasks).TaskId);
+    }
+}
+
+public sealed class SimpleEngineContractTests : EngineContractTestsBase
+{
+    protected override IEngineAdapter CreateEngine()
+        => new WorkflowPlatform.Workflow.Adapter.Simple.SimpleBpmnEngineAdapter();
+}
+
+public sealed class ReplayEngineContractTests : EngineContractTestsBase
+{
+    protected override IEngineAdapter CreateEngine()
+        => new WorkflowPlatform.Workflow.Adapter.Replay.ReplayEngineAdapter(
+            new WorkflowPlatform.Workflow.Adapter.Replay.InMemoryReplayLogStore());
+}

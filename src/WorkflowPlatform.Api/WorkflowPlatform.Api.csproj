@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WorkflowPlatform.Domain\WorkflowPlatform.Domain.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Application\WorkflowPlatform.Application.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Infrastructure\WorkflowPlatform.Infrastructure.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Abstraction\WorkflowPlatform.Workflow.Abstraction.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Adapter.Simple\WorkflowPlatform.Workflow.Adapter.Simple.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Adapter.Replay\WorkflowPlatform.Workflow.Adapter.Replay.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Workflow\case-approval.bpmn" />
+  </ItemGroup>
+</Project>

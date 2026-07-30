@@ -1,0 +1,66 @@
+# Schema Snapshot — Single Source of Truth cho external API + DB
+# Load khi Phase 0 phát hiện task đụng external API hoặc DB
+# Tham khảo: docs/ai/HALLUCINATION_RULES.md, guides/hallucination-guide.md
+#
+# ⚠️  File này là FILE QUAN TRỌNG NHẤT để prevent hallucination.
+# ⚠️  Cập nhật ngay khi phát hiện schema mới hoặc gotcha.
+
+# ── External APIs ──────────────────────────────────────────────────
+external_apis: {}
+# stripe_payment_intent:
+#   endpoint: "POST https://api.stripe.com/v1/payment_intents"
+#   auth: "Bearer {STRIPE_SECRET_KEY}"
+#   required: [amount, currency]
+#   optional: [description, metadata, idempotency_key]
+#   returns: {id: str, status: str, client_secret: str}
+#   nullable: [description, metadata]
+#   gotcha: "amount là integer cents, KHÔNG phải float dollars"
+#   not_in_response:        # field Claude hay hallucinate có ở đây
+#     - raw_card_data
+#     - cvv
+#
+# gitlab_mr_list:
+#   endpoint: "GET /projects/:id/merge_requests"
+#   NOT_available:           # Claude hay assume có ở đây nhưng KHÔNG có
+#     - additions
+#     - deletions
+#   gotcha: "List endpoint KHÔNG có additions/deletions. Phải gọi single endpoint."
+#   workaround_for_additions: "GET /projects/:id/merge_requests/:iid"
+
+# ── Internal APIs ──────────────────────────────────────────────────
+internal_apis: {}
+# auth_service_login:
+#   endpoint: "POST /api/v1/auth/login"
+#   required: [email, password]
+#   returns: {token: str, user: object, expires_at: datetime}
+#   nullable: []
+
+# ── Database schema ────────────────────────────────────────────────
+database: {}
+# payments:
+#   columns: [id, amount, currency, status, stripe_payment_id, created_at, updated_at]
+#   nullable: [stripe_payment_id]   # null cho payments chưa submit
+#   unique: [stripe_payment_id]
+#   indexes: [created_at, status]
+#   auto_generated: [id, created_at, updated_at]
+#   gotcha: "amount stored in cents (integer)"
+#
+# users:
+#   columns: [id, email, password_hash, created_at]
+#   nullable: []
+#   unique: [email]
+#   gotcha: "password_hash là bcrypt, không phải plaintext"
+
+# ── Message queue / events ────────────────────────────────────────
+events: {}
+# webhook.payment.succeeded:
+#   payload: {payment_id: str, amount: int, currency: str, customer_id: str}
+#   nullable: [customer_id]
+#   gotcha: "Có thể bị duplicate. Dedup bằng idempotency_key."
+
+# ── External services config ──────────────────────────────────────
+services: {}
+# redis:
+#   purpose: "Session cache + rate limiting"
+#   key_prefixes: ["session:", "ratelimit:", "lock:"]
+#   ttl_default: 3600

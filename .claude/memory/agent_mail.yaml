@@ -1,0 +1,15 @@
+# Agent Mail — kênh truyền tin giữa agents/sessions
+# Đọc bởi /mail-* commands, SessionStart hook
+# Git-committable, chia sẻ giữa sessions và team members
+# Chỉ cần khi multi-dev (D4=multi-dev)
+
+# ── Mailbox ────────────────────────────────────────────────────────
+mailbox: []
+# - id: "msg-x1y2"              # hash-based ID (4 hex chars)
+#   from: "worker-A"
+#   to: "all"                    # "all" | "worker-B" | "orchestrator"
+#   subject: "Schema change: users table"
+#   body: "Added column 'phone_verified' (boolean, default false). Update all queries."
+#   task_ref: "tsk-a1b2"        # optional, link to task
+#   created_at: "2026-06-11T14:00:00Z"
+#   read_by: []                  # list of agent names đã đọc

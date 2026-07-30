@@ -1,0 +1,1 @@
+- Prefers status line to display context usage, model info, and cache information next to accept mode indicator for real-time visibility of environment state. Confidence: 0.6

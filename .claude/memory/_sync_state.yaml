@@ -1,0 +1,93 @@
+# _sync_state.yaml — drift baseline pointer for context-consistency M6
+#
+# Records WHEN the memory files (project_state.yaml, schema_snapshot.yaml,
+# PROJECT_MAP.md, CLAUDE.md) were last reconciled with the codebase. Used by
+# drift_check.py to compare HEAD against the baseline commit and surface
+# drift if the watched paths have changed since.
+#
+# Stamped by:
+#   - /classify Bước 5 step 6 (after auto-scaffold + show diff + user accept)
+#   - /done step 5 (after a successful task that wrote memory)
+#   - /check-drift --baseline (manual re-stamp)
+#
+# Read by:
+#   - drift_check.py (every SessionStart, every Stop, on /check-drift)
+#
+# Fail-open: if this file is missing/malformed, drift_check returns
+# `no_sync_state` and exits 0 — never blocks the session.
+
+# synced_at_commit — full SHA of HEAD when memory was last in sync
+# synced_at_ts     — epoch seconds, informational only
+# synced_by        — /classify | /done | /check-drift --baseline | manual
+synced_at_commit: ""
+synced_at_ts: 0
+synced_by: ""
+
+# Globs that count as "the codebase". A change inside any of these between
+# synced_at_commit and HEAD raises drift. Kept conservative — over-reporting
+# is fixable; under-reporting silently corrupts memory.
+watched_paths:
+  # Source roots (most projects)
+  - src/**
+  - lib/**
+  - app/**
+  - internal/**
+  - pkg/**
+  - cmd/**
+  # Schema / migrations
+  - migrations/**
+  - db/**
+  - schema.sql
+  - schema.prisma
+  - openapi.yaml
+  - openapi.json
+  - swagger.yaml
+  - swagger.json
+  # Manifests (drift here usually means tech stack changed)
+  - package.json
+  - pom.xml
+  - build.gradle
+  - build.gradle.kts
+  - go.mod
+  - pyproject.toml
+  - requirements.txt
+  - Cargo.toml
+  - Gemfile
+  # .NET — wildcards because *.csproj lives anywhere
+  - "**/*.csproj"
+  - "**/*.fsproj"
+
+# Globs that are explicitly NOT watched. Tests, generated files, the harness
+# itself, vendored deps. Order doesn't matter — ignored_paths wins over
+# watched_paths.
+ignored_paths:
+  # Tests (changing tests doesn't drift memory)
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/__tests__/**"
+  # Framework + docs (the harness manages itself)
+  - .claude/**
+  - docs/**
+  - "*.md"
+  # Vendored / generated
+  - node_modules/**
+  - vendor/**
+  - dist/**
+  - build/**
+  - target/**
+  - bin/**
+  - obj/**
+  - .next/**
+  - .nuxt/**
+  - __pycache__/**
+  - .venv/**
+  - venv/**
+  - .git/**
+  # Lock files (volatile, low signal)
+  - package-lock.json
+  - yarn.lock
+  - pnpm-lock.yaml
+  - poetry.lock
+  - Cargo.lock

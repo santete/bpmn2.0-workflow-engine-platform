@@ -1,0 +1,58 @@
+# Skills Marketplace — Catalog
+# Progressive disclosure: skill chỉ load khi context cần.
+# Mỗi skill là một bộ rules đóng gói, tái sử dụng cross-project.
+#
+# Usage trong CLAUDE.md Phase 0:
+#   - Đọc catalog.yaml
+#   - Match task type (từ 6D classification D1) → load skill tương ứng
+#   - Skill load = đọc rules.md của skill đó vào context
+#
+# Thêm skill mới:
+#   1. Tạo thư mục .claude/skills/<skill-name>/
+#   2. Tạo skill.yaml (metadata) + rules.md (nội dung)
+#   3. Thêm entry vào catalog này
+
+skills:
+  - name: code-review
+    description: "Code review checklist — quality, security, hallucination, spec compliance"
+    path: .claude/skills/code-review/
+    load_when:
+      - D1=any        # load khi review bất kỳ code nào
+      - phase=4        # Phase 4 Self-Review
+    source: "Converted from docs/ai/CODING_RULES.md + SECURITY_RULES.md + HALLUCINATION_RULES.md"
+    tags: [quality, security, review]
+
+  - name: api-design
+    description: "API naming, response format, error handling, timeout conventions"
+    path: .claude/skills/api-design/
+    load_when:
+      - D1=new-develop  # khi develop API mới
+      - task_touches=api # khi task liên quan API
+    source: "Converted from docs/ai/API_RULES.md + internal_rules/03-04-05"
+    tags: [api, naming, conventions]
+
+  - name: testing
+    description: "TDD-first workflow, test structure, coverage strategy, edge case patterns"
+    path: .claude/skills/testing/
+    load_when:
+      - D1=any          # TDD-first áp dụng mọi task có code
+      - phase=2          # Phase 2 Implement (test-first)
+    source: "Converted from docs/ai/TESTING_RULES.md + Phase 1 TDD-first rules"
+    tags: [testing, tdd, quality]
+
+  - name: git-workflow
+    description: "Branch naming, commit format, MR checklist, AI disclosure"
+    path: .claude/skills/git-workflow/
+    load_when:
+      - task_touches=git  # commit, branch, MR
+      - phase=5           # Phase 5 Report (commit step)
+    source: "Converted from docs/ai/GIT_CONVENTION.md + internal_rules/01_MR_Compliance.md"
+    tags: [git, commit, mr]
+
+  - name: database
+    description: "Schema naming, migration rules, query patterns, nullable handling"
+    path: .claude/skills/database/
+    load_when:
+      - task_touches=db   # schema, migration, query
+    source: "Converted from docs/ai/DB_RULES.md + internal_rules/02_Naming_Microservice.md"
+    tags: [database, schema, migration]

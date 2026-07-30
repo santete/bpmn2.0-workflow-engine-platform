@@ -1,0 +1,147 @@
+using Microsoft.EntityFrameworkCore;
+using WorkflowPlatform.Api.Infrastructure;
+using WorkflowPlatform.Application.Definitions;
+using WorkflowPlatform.Application.ReadModel;
+using WorkflowPlatform.Domain.Cases;
+using WorkflowPlatform.Infrastructure.Persistence;
+using WorkflowPlatform.Workflow.Abstraction;
+using WorkflowPlatform.Workflow.Abstraction.Contracts;
+using WorkflowPlatform.Workflow.Adapter.Replay;
+using WorkflowPlatform.Workflow.Adapter.Simple;
+using WorkflowPlatform.Workflow.Bpmn;
+
+var builder = WebApplication.CreateBuilder(args);
+var cfg = builder.Configuration;
+
+var persistence = (cfg["PERSISTENCE"] ?? "sqlite").ToLowerInvariant();
+var engineChoice = (cfg["WF_ENGINE"] ?? "simple").ToLowerInvariant();
+
+builder.Services.AddSingleton<CaseProjector>();
+builder.Services.AddSingleton<IWorkflowEventHandler>(sp => sp.GetRequiredService<CaseProjector>());
+builder.Services.AddSingleton<IWorkflowEventPublisher, InProcessEventBus>();
+builder.Services.AddSingleton<IProcessPort, WorkflowService>();
+
+if (persistence == "sqlite")
+{
+    var dbPath = cfg["DB_PATH"] ?? "workflow.db";
+    builder.Services.AddDbContextFactory<AppDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
+    builder.Services.AddSingleton<ICaseRepository, EfCaseRepository>();
+    builder.Services.AddSingleton<ICaseReadStore, EfCaseReadStore>();
+    builder.Services.AddSingleton<IReplayLogStore, EfReplayLogStore>();
+    builder.Services.AddSingleton<IProcessDefinitionStore, EfProcessDefinitionStore>();
+    builder.Services.AddSingleton<IEngineAdapter, ReplayEngineAdapter>();
+}
+else
+{
+    builder.Services.AddSingleton<ICaseRepository, InMemoryCaseRepository>();
+    builder.Services.AddSingleton<ICaseReadStore, InMemoryCaseReadStore>();
+    builder.Services.AddSingleton<IReplayLogStore, InMemoryReplayLogStore>();
+    builder.Services.AddSingleton<IProcessDefinitionStore, InMemoryProcessDefinitionStore>();
+    if (engineChoice == "replay")
+        builder.Services.AddSingleton<IEngineAdapter, ReplayEngineAdapter>();
+    else
+        builder.Services.AddSingleton<IEngineAdapter, SimpleBpmnEngineAdapter>();
+}
+
+var app = builder.Build();
+
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+if (persistence == "sqlite")
+{
+    using var ctx = app.Services.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext();
+    ctx.Database.EnsureCreated();
+}
+
+// Seed quy trình mặc định (nếu chưa có), rồi deploy TẤT CẢ định nghĩa đã lưu.
+var defStore = app.Services.GetRequiredService<IProcessDefinitionStore>();
+if (!defStore.All().Any())
+{
+    defStore.Save(new ProcessDefinitionSpec
+    {
+        Key = "case-approval",
+        Name = "Quy trinh phe duyet ho so",
+        EndsWithDecision = true,
+        Steps = new()
+        {
+            new StepSpec { Id = "review", Name = "Tham dinh ho so" },
+            new StepSpec { Id = "approve", Name = "Phe duyet" }
+        }
+    });
+}
+var processPort = app.Services.GetRequiredService<IProcessPort>();
+foreach (var spec in defStore.All())
+    await processPort.DeployDefinitionAsync(new CanonicalBpmn(spec.Key, ToXml(spec)));
+
+// --- Định nghĩa quy trình (tạo/sửa lúc chạy — tính linh động) ---
+app.MapGet("/definitions", (IProcessDefinitionStore store) => Results.Ok(store.All()));
+
+app.MapPost("/definitions", async (CreateDefinitionRequest req, IProcessDefinitionStore store, IProcessPort wf) =>
+{
+    if (req.Steps is null || req.Steps.Length == 0)
+        return Results.BadRequest(new { error = "Quy trình cần ít nhất một bước." });
+
+    var key = $"wf-{Guid.NewGuid():N}"[..11];
+    var spec = new ProcessDefinitionSpec
+    {
+        Key = key,
+        Name = string.IsNullOrWhiteSpace(req.Name) ? key : req.Name.Trim(),
+        EndsWithDecision = req.EndsWithDecision,
+        Steps = req.Steps
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select((n, i) => new StepSpec { Id = $"s{i + 1}", Name = n.Trim() })
+            .ToList()
+    };
+    if (spec.Steps.Count == 0)
+        return Results.BadRequest(new { error = "Quy trình cần ít nhất một bước hợp lệ." });
+
+    store.Save(spec);
+    await wf.DeployDefinitionAsync(new CanonicalBpmn(spec.Key, ToXml(spec)));
+    return Results.Created($"/definitions/{key}", spec);
+});
+
+// --- Hồ sơ (instance của một quy trình bất kỳ) ---
+app.MapPost("/cases", async (CreateCaseRequest req, ICaseRepository repo, CaseProjector projector, IProcessPort wf) =>
+{
+    var definitionKey = string.IsNullOrWhiteSpace(req.DefinitionKey) ? "case-approval" : req.DefinitionKey!;
+    var @case = Case.Create(req.Title, req.Content ?? string.Empty);
+    repo.Add(@case);
+    projector.OnCaseCreated(@case.Id, @case.Title, definitionKey);
+
+    await wf.StartProcessAsync(new StartProcessCommand(
+        ProcessDefinitionKey: definitionKey,
+        BusinessKey: @case.Id.ToString(),
+        Variables: new Dictionary<string, ProcessVariable> { ["caseRef"] = ProcessVariable.Ref("case", @case.Id.ToString()) },
+        Initiator: req.CreatedBy ?? "system"));
+
+    return Results.Created($"/cases/{@case.Id}", new { id = @case.Id });
+});
+
+app.MapGet("/cases", (ICaseReadStore store) => Results.Ok(store.All()));
+
+app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store)
+    => store.Get(id) is { } view ? Results.Ok(view) : Results.NotFound());
+
+app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store) =>
+{
+    await wf.CompleteUserTaskAsync(new CompleteTaskCommand(
+        BusinessKey: id.ToString(),
+        TaskId: req.TaskId,
+        Variables: new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum(req.Decision ?? "APPROVED") },
+        Actor: req.Actor ?? "system"));
+
+    return store.Get(id) is { } view ? Results.Ok(view) : Results.NotFound();
+});
+
+app.Run();
+
+static string ToXml(ProcessDefinitionSpec spec)
+    => BpmnBuilder.Build(spec.Key, spec.Name,
+        spec.Steps.Select(s => (s.Id, s.Name)).ToList(), spec.EndsWithDecision);
+
+public sealed record CreateDefinitionRequest(string Name, string[] Steps, bool EndsWithDecision);
+public sealed record CreateCaseRequest(string Title, string? Content, string? DefinitionKey, string? CreatedBy);
+public sealed record CompleteTaskRequest(string TaskId, string? Decision, string? Actor);
+
+public partial class Program { }

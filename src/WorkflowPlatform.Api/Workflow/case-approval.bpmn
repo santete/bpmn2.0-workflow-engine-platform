@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             targetNamespace="http://workflowplatform/mvp"
+             id="defs_case_approval">
+  <process id="case-approval" name="Quy trinh phe duyet ho so" isExecutable="true">
+    <startEvent id="start" name="Tiep nhan" />
+    <sequenceFlow id="f1" sourceRef="start" targetRef="review" />
+    <userTask id="review" name="Tham dinh ho so" />
+    <sequenceFlow id="f2" sourceRef="review" targetRef="approve" />
+    <userTask id="approve" name="Phe duyet" />
+    <sequenceFlow id="f3" sourceRef="approve" targetRef="gw" />
+    <exclusiveGateway id="gw" name="Quyet dinh" />
+    <sequenceFlow id="f4" sourceRef="gw" targetRef="end">
+      <conditionExpression name="decision">APPROVED</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="f5" sourceRef="gw" targetRef="endRejected">
+      <conditionExpression name="decision">REJECTED</conditionExpression>
+    </sequenceFlow>
+    <endEvent id="end" name="Hoan tat" />
+    <endEvent id="endRejected" name="Tu choi" />
+  </process>
+</definitions>

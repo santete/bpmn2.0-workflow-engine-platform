@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Abstraction\WorkflowPlatform.Workflow.Abstraction.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Bpmn\WorkflowPlatform.Workflow.Bpmn.csproj" />
+  </ItemGroup>
+</Project>

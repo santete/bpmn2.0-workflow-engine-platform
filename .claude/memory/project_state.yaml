@@ -1,0 +1,110 @@
+# Project State — đọc Phase 0, ghi Phase 5
+# Đây là L2 memory: thay đổi sau mỗi session
+# Tham khảo: guides/memory-system.md
+
+# ── Pattern (set bởi /classify, đừng sửa tay) ──────────────────────
+pattern: A                          # A | B | C
+classified_at: "YYYY-MM-DD"
+loc_at_classification: 0
+next_review_threshold: 12000        # /classify lại khi LOC vượt số này
+team_size: 1
+
+# ── Identity ────────────────────────────────────────────────────────
+project_name: "TODO: tên project"
+stack: "TODO: e.g. Python 3.11 + FastAPI + PostgreSQL"
+description: "TODO: 1-2 dòng mô tả project"
+
+# ── Last task classification (6D — set bởi /classify-task hoặc Phase 1 step 1)
+last_task_classification: {}
+# last_task_classification:
+#   date: "2026-06-11"
+#   task: "Add search by SP code"
+#   D1: new-develop
+#   D2: M
+#   D3: single-session
+#   D4: solo
+#   D5: clear
+#   D6: known-subsystem
+#   execution_mode: 2a-subagent
+#   pre_action: none
+
+# ── WISC Gates (Tier 3 Governance — computed by wisc-state.py after /classify-task)
+# Hook wisc-gate.py đọc section này để enforce. wisc-satisfy.py auto-flip khi artifact tạo.
+# wisc-bypass.py xử lý bypass có audit trail. /wisc-audit query lịch sử.
+# Status lifecycle: inactive → required → satisfied | bypassed
+wisc_gates: {}
+# wisc_gates:
+#   WRITE:
+#     status: required              # inactive | required | satisfied | bypassed
+#     artifact: "spec.md"           # file phải tồn tại để satisfy
+#     satisfied_at: ""              # timestamp khi gate satisfied
+#     satisfied_by: ""              # auto (file detected) | manual | bypass | structural
+#     bypass_reason: ""             # ghi lý do nếu user approve bypass (via /wisc-bypass)
+#   ISOLATE:
+#     status: required
+#     artifact: ".claude/memory/scout_report_SP456.md"
+#     satisfied_at: ""
+#     satisfied_by: ""
+#     bypass_reason: ""
+#   SELECT:
+#     status: satisfied             # luôn satisfied (structural enforcement)
+#     artifact: ""
+#     satisfied_at: "2026-06-15T10:00:00"
+#     satisfied_by: structural
+#     bypass_reason: ""
+#   COMPRESS:
+#     status: inactive              # wisc-gate.py check real-time token count
+#     artifact: ""
+#     satisfied_at: ""
+#     satisfied_by: ""
+#     bypass_reason: ""
+
+# ── Sprint / current state ─────────────────────────────────────────
+current_sprint: ""
+last_successful_task: ""
+session_count: 0
+consecutive_failures: 0
+
+# ── Completed tasks (append, archive sau 2 sprints) ────────────────
+completed_tasks: []
+# - date: "2026-04-01"
+#   task: "Implemented StripeService"
+#   files_modified: [src/payment/stripe.py, tests/test_stripe.py]
+#   pattern_phase: 5
+
+# ── Decisions (architectural, không hiển nhiên từ code) ────────────
+decisions: []
+# - date: "2026-04-01"
+#   decision: "Dùng idempotency_key cho webhook dedup"
+#   reason: "Stripe có thể gửi duplicate events"
+#   impact: "Requires column in webhook_events table"
+
+# ── Known gotchas (workaround cho hành vi bất ngờ) ─────────────────
+known_gotchas: []
+# - discovery: "additions/deletions chỉ có ở single MR endpoint"
+#   workaround: "Gọi GET /projects/:id/merge_requests/:iid riêng"
+#   files_affected: [src/extraction/merge_requests.py]
+#   discovered_at: "2026-04-02"
+
+# ── Pending tasks (carry-over giữa session) ────────────────────────
+pending_tasks: []
+# - description: "Implement retry logic cho webhook failures"
+#   priority: medium
+#   blocked_by: ""
+
+# ── Hallucination history (do `/halluc-score --save` ghi) ──────────
+# Track HRS theo session để spot trend (pattern recurring → fix root cause)
+# Keep last 50 entries (auto-truncate trong halluc-score script)
+hallucination_history: []
+# - date: "2026-04-15"
+#   session: 12
+#   hrs: 0.62
+#   dominant_signal: schema_match
+#   signals:
+#     cite_coverage: 0.6
+#     schema_match: 0.0
+#     confidence_density: 1.2
+#     static_errors: 0
+#     context_drift: 0.81
+#     failures: 1
+#     schema_staleness: 12

@@ -1,0 +1,11 @@
+name: testing
+version: "1.0"
+description: "TDD-first workflow, test structure, coverage strategy, edge case patterns"
+author: framework
+dependencies: []
+load_when:
+  - D1=any
+  - phase=2
+sources:
+  - docs/ai/TESTING_RULES.md
+token_estimate: ~500

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
+    <!-- Đè transitive SQLitePCLRaw 2.1.11 (advisory GHSA-2m69-gcr7-jv3q) lên bản vá 3.0.3. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WorkflowPlatform.Domain\WorkflowPlatform.Domain.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Application\WorkflowPlatform.Application.csproj" />
+    <ProjectReference Include="..\WorkflowPlatform.Workflow.Adapter.Replay\WorkflowPlatform.Workflow.Adapter.Replay.csproj" />
+  </ItemGroup>
+</Project>
