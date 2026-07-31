@@ -99,4 +99,32 @@ public class CaseProjectorTests
 
         Assert.Single(history.List(caseId), e => e.Kind == CaseHistoryKind.ProcessRejected);
     }
+
+    [Fact]
+    public void OnCaseCreated_sets_a_non_default_version()
+    {
+        var caseId = Guid.NewGuid();
+        var (_, views, _) = Setup(caseId);
+
+        var view = views.Get(caseId)!;
+        Assert.NotEqual(Guid.Empty, view.Version);
+    }
+
+    [Fact]
+    public async Task HandleAsync_bumps_version_on_every_event()
+    {
+        var caseId = Guid.NewGuid();
+        var (projector, views, _) = Setup(caseId);
+        var v0 = views.Get(caseId)!.Version;
+
+        await projector.HandleAsync(new TaskCreated(
+            caseId.ToString(), "review", "Tham dinh", "anh", DateTimeOffset.UtcNow));
+        var v1 = views.Get(caseId)!.Version;
+        Assert.NotEqual(v0, v1);
+
+        await projector.HandleAsync(new TaskCompleted(
+            caseId.ToString(), "review", "Tham dinh", "anh", "OK", DateTimeOffset.UtcNow));
+        var v2 = views.Get(caseId)!.Version;
+        Assert.NotEqual(v1, v2);
+    }
 }

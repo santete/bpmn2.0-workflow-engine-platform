@@ -130,18 +130,32 @@ app.MapPost("/cases", async (CreateCaseRequest req, ICaseRepository repo, CasePr
 
 app.MapGet("/cases", (ICaseReadStore store) => Results.Ok(store.All()));
 
-app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store)
-    => store.Get(id) is { } view ? Results.Ok(view) : Results.NotFound());
-
-app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store) =>
+app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store, HttpContext ctx) =>
 {
+    if (store.Get(id) is not { } view) return Results.NotFound();
+    ctx.Response.Headers["ETag"] = $"\"{view.Version}\"";
+    return Results.Ok(view);
+});
+
+app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store, HttpContext ctx) =>
+{
+    var ifMatch = ctx.Request.Headers.IfMatch;
+    if (ifMatch.Count > 0)
+    {
+        var view = store.Get(id);
+        if (view is null) return Results.NotFound();
+        var expected = ifMatch.ToString().Trim('"');
+        if (view.Version.ToString() != expected)
+            return Results.StatusCode(StatusCodes.Status412PreconditionFailed);
+    }
+
     await wf.CompleteUserTaskAsync(new CompleteTaskCommand(
         BusinessKey: id.ToString(),
         TaskId: req.TaskId,
         Variables: new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum(req.Decision ?? "APPROVED") },
         Actor: req.Actor ?? "system"));
 
-    return store.Get(id) is { } view ? Results.Ok(view) : Results.NotFound();
+    return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
 });
 
 app.MapGet("/cases/{id:guid}/history", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)

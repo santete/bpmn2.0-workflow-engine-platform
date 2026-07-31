@@ -163,10 +163,15 @@ async function createCase(){
   loadCases();
 }
 async function complete(id, taskId, decision){
-  await fetch(`/cases/${id}/complete-task`,{method:"POST",headers:{"Content-Type":"application/json"},
+  const version = versionById[id];
+  const headers = {"Content-Type":"application/json"};
+  if (version) headers["If-Match"] = '"'+version+'"';
+  const r = await fetch(`/cases/${id}/complete-task`,{method:"POST",headers,
     body: JSON.stringify({ taskId, decision })});
+  if (r.status === 412){ alert("Hồ sơ đã bị thay đổi bởi người khác. Vui long tai lai trang."); }
   loadCases();
 }
+let versionById = {};
 function actionsFor(c){
   if (!c.currentTaskId) return `<span class="pill ${bizPill(c.businessStatus)}">${c.businessStatus}</span>`;
   const spec = defsByKey[c.definitionKey];
@@ -200,7 +205,11 @@ async function loadDefs(){
   defsByKey = Object.fromEntries(defs.map(d=>[d.key,d]));
   renderDefs(); renderDefOptions();
 }
-async function loadCases(){ renderCases(await (await fetch("/cases")).json()); }
+async function loadCases(){
+  const cases = await (await fetch("/cases")).json();
+  versionById = {}; cases.forEach(c=>{ if (c.version) versionById[c.id] = c.version; });
+  renderCases(cases);
+}
 
 async function showHistory(caseId, btn){
   const h = await (await fetch(`/cases/${caseId}/history`)).json();

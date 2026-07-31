@@ -129,6 +129,65 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, nf.StatusCode);
     }
 
+    [Fact]
+    public async Task Complete_with_correct_version_succeeds()
+    {
+        var client = _factory.CreateClient();
+
+        var create = await client.PostAsJsonAsync("/cases", new { title = "Concurrency OK" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var getResp = await client.GetAsync($"/cases/{id}");
+        var etag = getResp.Headers.ETag!.Tag; // "\"guid\""
+
+        var req = new HttpRequestMessage(HttpMethod.Post, $"/cases/{id}/complete-task")
+        {
+            Content = JsonContent.Create(new { taskId = "review" })
+        };
+        req.Headers.TryAddWithoutValidation("If-Match", etag);
+        var resp = await client.SendAsync(req);
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Complete_with_stale_version_returns_412()
+    {
+        var client = _factory.CreateClient();
+
+        var create = await client.PostAsJsonAsync("/cases", new { title = "Concurrency KO" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var v0 = (await client.GetAsync($"/cases/{id}")).Headers.ETag!.Tag;
+
+        // complete once → version bumps
+        var ok = new HttpRequestMessage(HttpMethod.Post, $"/cases/{id}/complete-task")
+        {
+            Content = JsonContent.Create(new { taskId = "review" })
+        };
+        ok.Headers.TryAddWithoutValidation("If-Match", v0);
+        Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(ok)).StatusCode);
+
+        // retry with stale v0 → 412
+        var ko = new HttpRequestMessage(HttpMethod.Post, $"/cases/{id}/complete-task")
+        {
+            Content = JsonContent.Create(new { taskId = "approve" })
+        };
+        ko.Headers.TryAddWithoutValidation("If-Match", v0);
+        Assert.Equal(HttpStatusCode.PreconditionFailed, (await client.SendAsync(ko)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Complete_without_if_match_still_works()
+    {
+        var client = _factory.CreateClient();
+
+        var create = await client.PostAsJsonAsync("/cases", new { title = "No ETag" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var resp = await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "review" });
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
+
     private sealed record ProcessStateViewJson(string BusinessKey, string DefinitionKey, string Status, TaskViewJson[] ActiveTasks);
     private sealed record TaskViewJson(string TaskId, string Name);
 }

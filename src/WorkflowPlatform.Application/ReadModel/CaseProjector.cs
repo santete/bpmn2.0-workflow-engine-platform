@@ -25,7 +25,7 @@ public sealed class CaseProjector : IWorkflowEventHandler
         => _store.Upsert(new CaseView
         {
             Id = caseId, Title = title, DefinitionKey = definitionKey,
-            BusinessStatus = "Draft", WorkflowStatus = "Khoi tao"
+            BusinessStatus = "Draft", WorkflowStatus = "Khoi tao", Version = Guid.NewGuid()
         });
 
     public Task HandleAsync(WorkflowEvent evt, CancellationToken ct = default)
@@ -44,7 +44,7 @@ public sealed class CaseProjector : IWorkflowEventHandler
                 view.CurrentTaskId = created.TaskId;
                 view.CurrentTaskName = created.TaskName;
                 view.CurrentTaskAssignee = created.Assignee;
-                view.WorkflowStatus = created.TaskName;   // hiển thị tên bước động
+                view.WorkflowStatus = created.TaskName;
                 if (view.BusinessStatus is "Draft")
                 {
                     var @case = _repository.Get(caseId);
@@ -89,6 +89,7 @@ public sealed class CaseProjector : IWorkflowEventHandler
                 break;
         }
 
+        view.Version = Guid.NewGuid();
         _store.Upsert(view);
         return Task.CompletedTask;
     }

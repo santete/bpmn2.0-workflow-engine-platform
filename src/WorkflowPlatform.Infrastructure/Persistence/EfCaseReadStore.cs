@@ -25,6 +25,7 @@ public sealed class EfCaseReadStore : ICaseReadStore
             existing.CurrentTaskId = view.CurrentTaskId;
             existing.CurrentTaskName = view.CurrentTaskName;
             existing.CurrentTaskAssignee = view.CurrentTaskAssignee;
+            if (view.Version != Guid.Empty) existing.Version = view.Version;
         }
         ctx.SaveChanges();
     }
