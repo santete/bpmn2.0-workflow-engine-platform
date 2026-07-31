@@ -22,6 +22,10 @@ builder.Services.AddSingleton<CaseProjector>();
 builder.Services.AddSingleton<IWorkflowEventHandler>(sp => sp.GetRequiredService<CaseProjector>());
 builder.Services.AddSingleton<IWorkflowEventPublisher, InProcessEventBus>();
 builder.Services.AddSingleton<IProcessPort, WorkflowService>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddSingleton<CancelBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<CancelBackgroundService>());
 
 if (persistence == "sqlite")
 {
@@ -51,7 +55,9 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<IdentityMiddleware>();
+app.UseExceptionHandler();
 
 if (persistence == "sqlite")
 {
@@ -186,16 +192,14 @@ app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskReques
     return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
 });
 
-app.MapPost("/cases/{id:guid}/cancel", async (Guid id, IProcessPort wf, ICaseReadStore store) =>
+app.MapPost("/cases/{id:guid}/cancel", async (Guid id, ICaseReadStore store, CancelBackgroundService bg) =>
 {
     var view = store.Get(id);
     if (view is null) return Results.NotFound();
     if (view.CurrentTaskId is null) return Results.Conflict();
 
-    try { await wf.CancelProcessAsync(id.ToString()); }
-    catch (InvalidOperationException) { return Results.Conflict(); }
-
-    return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
+    await bg.EnqueueAsync(new CancelCommand(id.ToString()));
+    return Results.Accepted();
 });
 
 app.MapGet("/cases/{id:guid}/history", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)
@@ -208,6 +212,10 @@ app.MapGet("/processes/{key}/state", async (string key, IProcessPort wf) =>
         ? Results.NotFound()
         : Results.Ok(state);
 });
+
+app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" }));
+
+app.MapGet("/health/ready", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();
 

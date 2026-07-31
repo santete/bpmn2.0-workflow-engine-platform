@@ -204,18 +204,19 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     }
 
     [Fact]
-    public async Task Cancel_running_case_returns_200_and_marks_cancelled()
+    public async Task Cancel_running_case_returns_202_and_marks_cancelled()
     {
         var client = ClientAsWeb("thamdinh");
         var create = await client.PostAsJsonAsync("/cases", new { title = "Cancel me" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
 
         var resp = await client.PostAsJsonAsync($"/cases/{id}/cancel", new { });
-        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        Assert.Equal(HttpStatusCode.Accepted, resp.StatusCode);
 
-        var view = await client.GetFromJsonAsync<CaseViewDto>($"/cases/{id}");
-        Assert.Equal("Da huy", view!.WorkflowStatus);
-        Assert.Null(view.CurrentTaskId);
+        await Task.Delay(200);
+        var view2 = await client.GetFromJsonAsync<CaseViewDto>($"/cases/{id}");
+        Assert.Equal("Da huy", view2!.WorkflowStatus);
+        Assert.Null(view2!.CurrentTaskId);
 
         var history = await client.GetFromJsonAsync<List<HistoryEntryDto>>($"/cases/{id}/history");
         Assert.Contains(history!, e => e.Kind == "ProcessCancelled");
@@ -246,4 +247,20 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
 
     private sealed record ProcessStateViewJson(string BusinessKey, string DefinitionKey, string Status, TaskViewJson[] ActiveTasks);
     private sealed record TaskViewJson(string TaskId, string Name);
+
+    [Fact]
+    public async Task Health_live_returns_200()
+    {
+        var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/health/live");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Health_ready_returns_200()
+    {
+        var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/health/ready");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+    }
 }
