@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using WorkflowPlatform.Api.Infrastructure;
 using WorkflowPlatform.Application.Definitions;
@@ -11,6 +12,7 @@ using WorkflowPlatform.Workflow.Adapter.Simple;
 using WorkflowPlatform.Workflow.Bpmn;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 var cfg = builder.Configuration;
 
 var persistence = (cfg["PERSISTENCE"] ?? "sqlite").ToLowerInvariant();
@@ -29,6 +31,7 @@ if (persistence == "sqlite")
     builder.Services.AddSingleton<ICaseReadStore, EfCaseReadStore>();
     builder.Services.AddSingleton<IReplayLogStore, EfReplayLogStore>();
     builder.Services.AddSingleton<IProcessDefinitionStore, EfProcessDefinitionStore>();
+    builder.Services.AddSingleton<ICaseHistoryStore, EfCaseHistoryStore>();
     builder.Services.AddSingleton<IEngineAdapter, ReplayEngineAdapter>();
 }
 else
@@ -37,6 +40,7 @@ else
     builder.Services.AddSingleton<ICaseReadStore, InMemoryCaseReadStore>();
     builder.Services.AddSingleton<IReplayLogStore, InMemoryReplayLogStore>();
     builder.Services.AddSingleton<IProcessDefinitionStore, InMemoryProcessDefinitionStore>();
+    builder.Services.AddSingleton<ICaseHistoryStore, InMemoryCaseHistoryStore>();
     if (engineChoice == "replay")
         builder.Services.AddSingleton<IEngineAdapter, ReplayEngineAdapter>();
     else
@@ -65,8 +69,8 @@ if (!defStore.All().Any())
         EndsWithDecision = true,
         Steps = new()
         {
-            new StepSpec { Id = "review", Name = "Tham dinh ho so" },
-            new StepSpec { Id = "approve", Name = "Phe duyet" }
+            new StepSpec { Id = "review", Name = "Tham dinh ho so", Assignee = "thamdinh" },
+            new StepSpec { Id = "approve", Name = "Phe duyet", Assignee = "lanhdao" }
         }
     });
 }
@@ -83,6 +87,7 @@ app.MapPost("/definitions", async (CreateDefinitionRequest req, IProcessDefiniti
         return Results.BadRequest(new { error = "Quy trình cần ít nhất một bước." });
 
     var key = $"wf-{Guid.NewGuid():N}"[..11];
+    var assignees = req.Assignees ?? Array.Empty<string?>();
     var spec = new ProcessDefinitionSpec
     {
         Key = key,
@@ -90,7 +95,12 @@ app.MapPost("/definitions", async (CreateDefinitionRequest req, IProcessDefiniti
         EndsWithDecision = req.EndsWithDecision,
         Steps = req.Steps
             .Where(n => !string.IsNullOrWhiteSpace(n))
-            .Select((n, i) => new StepSpec { Id = $"s{i + 1}", Name = n.Trim() })
+            .Select((n, i) => new StepSpec
+            {
+                Id = $"s{i + 1}",
+                Name = n.Trim(),
+                Assignee = i < assignees.Length && !string.IsNullOrWhiteSpace(assignees[i]) ? assignees[i]!.Trim() : null
+            })
             .ToList()
     };
     if (spec.Steps.Count == 0)
@@ -134,13 +144,24 @@ app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskReques
     return store.Get(id) is { } view ? Results.Ok(view) : Results.NotFound();
 });
 
+app.MapGet("/cases/{id:guid}/history", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)
+    => store.Get(id) is null ? Results.NotFound() : Results.Ok(historyStore.List(id)));
+
+app.MapGet("/processes/{key}/state", async (string key, IProcessPort wf) =>
+{
+    var state = await wf.GetProcessStateAsync(key);
+    return state.Status == WorkflowPlatform.Workflow.Abstraction.Contracts.ProcessStatus.NotFound
+        ? Results.NotFound()
+        : Results.Ok(state);
+});
+
 app.Run();
 
 static string ToXml(ProcessDefinitionSpec spec)
     => BpmnBuilder.Build(spec.Key, spec.Name,
-        spec.Steps.Select(s => (s.Id, s.Name, (string?)null)).ToList(), spec.EndsWithDecision);
+        spec.Steps.Select(s => (s.Id, s.Name, s.Assignee)).ToList(), spec.EndsWithDecision);
 
-public sealed record CreateDefinitionRequest(string Name, string[] Steps, bool EndsWithDecision);
+public sealed record CreateDefinitionRequest(string Name, string[] Steps, bool EndsWithDecision, string?[]? Assignees);
 public sealed record CreateCaseRequest(string Title, string? Content, string? DefinitionKey, string? CreatedBy);
 public sealed record CompleteTaskRequest(string TaskId, string? Decision, string? Actor);
 

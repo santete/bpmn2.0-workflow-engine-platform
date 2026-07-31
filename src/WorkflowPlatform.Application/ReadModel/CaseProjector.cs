@@ -12,11 +12,13 @@ public sealed class CaseProjector : IWorkflowEventHandler
 {
     private readonly ICaseReadStore _store;
     private readonly ICaseRepository _repository;
+    private readonly ICaseHistoryStore _history;
 
-    public CaseProjector(ICaseReadStore store, ICaseRepository repository)
+    public CaseProjector(ICaseReadStore store, ICaseRepository repository, ICaseHistoryStore history)
     {
         _store = store;
         _repository = repository;
+        _history = history;
     }
 
     public void OnCaseCreated(Guid caseId, string title, string definitionKey)
@@ -41,6 +43,7 @@ public sealed class CaseProjector : IWorkflowEventHandler
             case TaskCreated created:
                 view.CurrentTaskId = created.TaskId;
                 view.CurrentTaskName = created.TaskName;
+                view.CurrentTaskAssignee = created.Assignee;
                 view.WorkflowStatus = created.TaskName;   // hiển thị tên bước động
                 if (view.BusinessStatus is "Draft")
                 {
@@ -50,13 +53,20 @@ public sealed class CaseProjector : IWorkflowEventHandler
                 }
                 break;
 
-            case TaskCompleted:
+            case TaskCompleted completed:
+                _history.Append(new CaseHistoryEntry(
+                    caseId, CaseHistoryKind.TaskCompleted,
+                    completed.TaskId, completed.TaskName, completed.Actor, completed.Decision,
+                    completed.OccurredAt));
                 break;
 
-            case ProcessRejected:
+            case ProcessRejected rejected:
                 view.CurrentTaskId = null;
                 view.CurrentTaskName = null;
+                view.CurrentTaskAssignee = null;
                 view.WorkflowStatus = "Tu choi";
+                _history.Append(new CaseHistoryEntry(
+                    caseId, CaseHistoryKind.ProcessRejected, null, null, null, null, rejected.OccurredAt));
                 {
                     var @case = _repository.Get(caseId);
                     if (@case is not null) { @case.Reject(); _repository.Save(@case); }
@@ -64,10 +74,13 @@ public sealed class CaseProjector : IWorkflowEventHandler
                 }
                 break;
 
-            case ProcessCompleted:
+            case ProcessCompleted done:
                 view.CurrentTaskId = null;
                 view.CurrentTaskName = null;
+                view.CurrentTaskAssignee = null;
                 view.WorkflowStatus = "Hoan tat";
+                _history.Append(new CaseHistoryEntry(
+                    caseId, CaseHistoryKind.ProcessCompleted, null, null, null, null, done.OccurredAt));
                 {
                     var @case = _repository.Get(caseId);
                     if (@case is not null) { @case.Approve(); _repository.Save(@case); }

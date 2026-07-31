@@ -12,4 +12,5 @@ public sealed class CaseView
     public string WorkflowStatus { get; set; } = "Khoi tao";
     public string? CurrentTaskId { get; set; }
     public string? CurrentTaskName { get; set; }
+    public string? CurrentTaskAssignee { get; set; }
 }

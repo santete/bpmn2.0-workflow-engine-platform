@@ -17,7 +17,7 @@ public class DefinitionManagementTests : IClassFixture<InMemoryApiFactory>
     private sealed record StepDto(string Id, string Name);
     private sealed record DefDto(string Key, string Name, StepDto[] Steps, bool EndsWithDecision);
     private sealed record CaseViewDto(Guid Id, string Title, string DefinitionKey,
-        string BusinessStatus, string WorkflowStatus, string? CurrentTaskId, string? CurrentTaskName);
+        string BusinessStatus, string WorkflowStatus, string? CurrentTaskId, string? CurrentTaskName, string? CurrentTaskAssignee);
 
     [Fact]
     public async Task Define_custom_workflow_then_run_an_instance_through_it()
@@ -29,6 +29,7 @@ public class DefinitionManagementTests : IClassFixture<InMemoryApiFactory>
         {
             name = "Quy trinh cap phep",
             steps = new[] { "Kiem tra", "Xac minh", "Quyet dinh" },
+            assignees = new string?[] { "kiem_tra_vien", "xac_minh_vien", null },
             endsWithDecision = true
         });
         Assert.Equal(HttpStatusCode.Created, defResp.StatusCode);

@@ -24,6 +24,7 @@ public sealed class EfCaseReadStore : ICaseReadStore
             existing.WorkflowStatus = view.WorkflowStatus;
             existing.CurrentTaskId = view.CurrentTaskId;
             existing.CurrentTaskName = view.CurrentTaskName;
+            existing.CurrentTaskAssignee = view.CurrentTaskAssignee;
         }
         ctx.SaveChanges();
     }

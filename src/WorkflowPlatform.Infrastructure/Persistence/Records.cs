@@ -32,3 +32,16 @@ public sealed class ProcessDefinitionRecord
     public string Name { get; set; } = string.Empty;
     public string SpecJson { get; set; } = string.Empty;
 }
+
+/// <summary>Một dòng lịch sử bất biến của hồ sơ — audit trail (BC-7).</summary>
+public sealed class CaseHistoryRecord
+{
+    public long Id { get; set; }
+    public string CaseId { get; set; } = string.Empty;
+    public string Kind { get; set; } = string.Empty;
+    public string? TaskId { get; set; }
+    public string? TaskName { get; set; }
+    public string? Actor { get; set; }
+    public string? Decision { get; set; }
+    public DateTimeOffset OccurredAt { get; set; }
+}

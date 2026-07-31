@@ -18,7 +18,10 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     private sealed record CreatedResponse(Guid Id);
     private sealed record CaseViewDto(
         Guid Id, string Title, string BusinessStatus, string WorkflowStatus,
-        string? CurrentTaskId, string? CurrentTaskName);
+        string? CurrentTaskId, string? CurrentTaskName, string? CurrentTaskAssignee);
+    private sealed record HistoryEntryDto(
+        Guid CaseId, string Kind, string? TaskId, string? TaskName,
+        string? Actor, string? Decision, DateTimeOffset OccurredAt);
 
     [Theory]
     [InlineData("simple")]
@@ -35,6 +38,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
 
         var afterCreate = await client.GetFromJsonAsync<CaseViewDto>($"/cases/{id}");
         Assert.Equal("review", afterCreate!.CurrentTaskId);
+        Assert.Equal("thamdinh", afterCreate.CurrentTaskAssignee);
         Assert.Equal("Tham dinh ho so", afterCreate.WorkflowStatus);   // status = tên bước động
         Assert.Equal("InReview", afterCreate.BusinessStatus);
 
@@ -75,4 +79,56 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         var resp = await client.GetAsync($"/cases/{Guid.NewGuid()}");
         Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
     }
+
+    [Fact]
+    public async Task History_endpoint_returns_entries_in_order()
+    {
+        var client = _factory.CreateClient();
+
+        var create = await client.PostAsJsonAsync("/cases", new { title = "History test" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        await client.PostAsJsonAsync($"/cases/{id}/complete-task",
+            new { taskId = "review", decision = "APPROVED", actor = "reviewer1" });
+        await client.PostAsJsonAsync($"/cases/{id}/complete-task",
+            new { taskId = "approve", decision = "REJECTED", actor = "approver1" });
+
+        var history = await client.GetFromJsonAsync<List<HistoryEntryDto>>($"/cases/{id}/history");
+        Assert.Equal(3, history!.Count);
+        Assert.Equal("TaskCompleted", history[0].Kind);
+        Assert.Equal("review", history[0].TaskId);
+        Assert.Equal("reviewer1", history[0].Actor);
+        Assert.Equal("TaskCompleted", history[1].Kind);
+        Assert.Equal("approve", history[1].TaskId);
+        Assert.Equal("approver1", history[1].Actor);
+        Assert.Equal("REJECTED", history[1].Decision);
+        Assert.Equal("ProcessRejected", history[2].Kind);
+    }
+
+    [Fact]
+    public async Task History_endpoint_returns_404_for_unknown_case()
+    {
+        var client = _factory.CreateClient();
+        var resp = await client.GetAsync($"/cases/{Guid.NewGuid()}/history");
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Process_state_endpoint_returns_state_and_404()
+    {
+        var client = _factory.CreateClient();
+
+        var create = await client.PostAsJsonAsync("/cases", new { title = "State test" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var resp = await client.GetFromJsonAsync<ProcessStateViewJson>($"/processes/{id}/state");
+        Assert.Equal("Running", resp!.Status);
+        Assert.Single(resp.ActiveTasks);
+
+        var nf = await client.GetAsync($"/processes/{Guid.NewGuid()}/state");
+        Assert.Equal(HttpStatusCode.NotFound, nf.StatusCode);
+    }
+
+    private sealed record ProcessStateViewJson(string BusinessKey, string DefinitionKey, string Status, TaskViewJson[] ActiveTasks);
+    private sealed record TaskViewJson(string TaskId, string Name);
 }

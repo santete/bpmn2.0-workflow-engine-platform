@@ -14,7 +14,7 @@ public class PersistenceIntegrationTests
     private sealed record CreatedResponse(Guid Id);
     private sealed record CaseViewDto(
         Guid Id, string Title, string BusinessStatus, string WorkflowStatus,
-        string? CurrentTaskId, string? CurrentTaskName);
+        string? CurrentTaskId, string? CurrentTaskName, string? CurrentTaskAssignee);
 
     private static WebApplicationFactory<Program> SqliteFactory(string dbPath)
         => new WebApplicationFactory<Program>().WithWebHostBuilder(b =>

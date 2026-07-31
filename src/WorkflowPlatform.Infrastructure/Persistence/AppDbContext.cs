@@ -12,6 +12,7 @@ public sealed class AppDbContext : DbContext
     public DbSet<ReplayInstanceRecord> ReplayInstances => Set<ReplayInstanceRecord>();
     public DbSet<ReplayCompletionRecord> ReplayCompletions => Set<ReplayCompletionRecord>();
     public DbSet<ProcessDefinitionRecord> ProcessDefinitions => Set<ProcessDefinitionRecord>();
+    public DbSet<CaseHistoryRecord> CaseHistories => Set<CaseHistoryRecord>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -21,5 +22,7 @@ public sealed class AppDbContext : DbContext
         b.Entity<ReplayCompletionRecord>().HasKey(x => x.Id);
         b.Entity<ReplayCompletionRecord>().HasIndex(x => new { x.BusinessKey, x.Seq });
         b.Entity<ProcessDefinitionRecord>().HasKey(x => x.Key);
+        b.Entity<CaseHistoryRecord>().HasKey(x => x.Id);
+        b.Entity<CaseHistoryRecord>().HasIndex(x => new { x.CaseId, x.Id });
     }
 }
