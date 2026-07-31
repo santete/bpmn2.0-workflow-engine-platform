@@ -23,11 +23,17 @@ var engineChoice = (cfg["WF_ENGINE"] ?? "simple").ToLowerInvariant();
 builder.Services.AddSingleton<CaseProjector>();
 builder.Services.AddSingleton<IWorkflowEventHandler>(sp => sp.GetRequiredService<CaseProjector>());
 builder.Services.AddSingleton<IWorkflowEventPublisher, InProcessEventBus>();
-builder.Services.AddSingleton<IProcessPort, WorkflowService>();
+builder.Services.AddSingleton<IProcessPort>(sp =>
+    new ResilientProcessPort(
+        new WorkflowService(
+            sp.GetRequiredService<IEngineAdapter>(),
+            sp.GetRequiredService<IWorkflowEventPublisher>()),
+        sp.GetRequiredService<ILogger<ResilientProcessPort>>()));
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<CancelBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CancelBackgroundService>());
+builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 
 if (persistence == "sqlite")
 {
@@ -55,8 +61,10 @@ else
 
 var app = builder.Build();
 
+app.UseResponseCompression();
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseMiddleware<RateLimitMiddleware>();
 app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<IdentityMiddleware>();
 app.UseExceptionHandler();
