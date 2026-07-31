@@ -72,7 +72,8 @@
       <p class="hint">Thêm các bước theo thứ tự. Tùy chọn bước cuối là điểm quyết định Duyệt/Từ chối.</p>
       <div><label>Tên quy trình</label><input id="def-name" placeholder="VD: Quy trình cấp phép" /></div>
       <div style="margin-top:12px"><label>Các bước</label><div id="steps"></div>
-        <button type="button" class="ghost small" onclick="addStep()">+ Thêm bước</button></div>
+       <button type="button" class="ghost small" onclick="addStep()">+ Thêm bước</button></div>
+      <p class="hint" style="margin-bottom:0">Mỗi bước có thể gán người thực hiện (tùy chọn).</p>
       <div class="check">
         <input type="checkbox" id="def-decision" checked />
         <label for="def-decision">Bước cuối là quyết định (Duyệt / Từ chối) — sinh cổng rẽ nhánh</label>
@@ -110,13 +111,14 @@ const bizPill = s => ({Approved:"g",Rejected:"c",InReview:"w"}[s]||"n");
 const wfPill  = s => (s==="Hoan tat"?"g":s==="Tu choi"?"c":s==="Khoi tao"?"n":"w");
 
 /* ---- Designer ---- */
-function addStep(value){
+function addStep(value, assignee){
   const box = document.getElementById("steps");
   const i = box.children.length + 1;
   const row = document.createElement("div");
   row.className = "step-row";
   row.innerHTML = `<span class="n">${i}.</span>
-    <input placeholder="Tên bước ${i}" value="${esc(value||"")}" />
+    <input class="sname" placeholder="Tên bước ${i}" value="${esc(value||"")}" />
+    <input class="sass" placeholder="Người thực hiện" value="${esc(assignee||"")}" style="max-width:160px" />
     <button type="button" class="ghost small" onclick="this.parentElement.remove();renumber()">✕</button>`;
   box.appendChild(row);
 }
@@ -124,14 +126,16 @@ function renumber(){ [...document.querySelectorAll('#steps .step-row .n')].forEa
 
 async function saveDef(){
   const name = document.getElementById("def-name").value.trim();
-  const steps = [...document.querySelectorAll('#steps input')].map(i=>i.value.trim()).filter(Boolean);
+  const rows = [...document.querySelectorAll('#steps .step-row')];
+  const steps = rows.map(r=>r.querySelector('.sname').value.trim()).filter(Boolean);
+  const assignees = rows.map(r=>r.querySelector('.sass').value.trim()||null);
   if (!steps.length){ alert("Cần ít nhất một bước."); return; }
   const endsWithDecision = document.getElementById("def-decision").checked;
   const r = await fetch("/definitions", {method:"POST",headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ name, steps, endsWithDecision })});
+    body: JSON.stringify({ name, steps, endsWithDecision, assignees })});
   if (!r.ok){ alert("Lỗi tạo quy trình"); return; }
   document.getElementById("def-name").value = "";
-  document.getElementById("steps").innerHTML = ""; addStep(); addStep();
+  document.getElementById("steps").innerHTML = ""; addStep("",""); addStep("","");
   await loadDefs();
 }
 
@@ -177,7 +181,7 @@ function renderCases(cases){
   const el = document.getElementById("list");
   if (!cases.length){ el.innerHTML = '<div class="empty">Chưa có hồ sơ. Tạo một hồ sơ ở mục ② để bắt đầu.</div>'; return; }
   el.innerHTML = `<table><thead><tr>
-      <th>Hồ sơ</th><th>Quy trình</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Hành động</th>
+      <th>Hồ sơ</th><th>Quy trình</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Người TH</th><th>Hành động</th><th></th>
     </tr></thead><tbody>` + cases.map(c=>{
       const dn = defsByKey[c.definitionKey]?.name || c.definitionKey;
       return `<tr>
@@ -185,7 +189,9 @@ function renderCases(cases){
         <td>${esc(dn)}</td>
         <td><span class="pill ${wfPill(c.workflowStatus)}">${esc(c.workflowStatus)}</span></td>
         <td>${c.currentTaskName?`<div class="flow">▸ ${esc(c.currentTaskName)}</div>`:"—"}</td>
+        <td>${c.currentTaskAssignee?`<span class="badge">${esc(c.currentTaskAssignee)}</span>`:"—"}</td>
         <td><div class="actions">${actionsFor(c)}</div></td>
+        <td><button class="ghost small" onclick="showHistory('${c.id}',this)">Lịch sử</button></td>
       </tr>`;}).join("") + `</tbody></table>`;
 }
 
@@ -196,8 +202,17 @@ async function loadDefs(){
 }
 async function loadCases(){ renderCases(await (await fetch("/cases")).json()); }
 
+async function showHistory(caseId, btn){
+  const h = await (await fetch(`/cases/${caseId}/history`)).json();
+  const kindLabel = {TaskCompleted:"Hoàn thành",ProcessCompleted:"Kết thúc",ProcessRejected:"Từ chối"};
+  btn.insertAdjacentHTML("afterend",
+    `<div class="hist" style="margin:4px 0;padding:6px 10px;background:var(--steel-soft);border-radius:8px;font-size:12px">`
+    + h.map(e=>`<div style="padding:2px 0">${kindLabel[e.kind]||e.kind}: ${e.taskName||""} ${e.actor?"— "+e.actor:""} ${e.decision?"["+e.decision+"]":""}</div>`).join("")
+    + `<button class="ghost small" style="margin-top:4px" onclick="this.parentElement.remove()">Đóng</button></div>`);
+}
+
 // init
-addStep("Tham dinh"); addStep("Phe duyet");
+addStep("Tham dinh","thamdinh"); addStep("Phe duyet","lanhdao");
 loadDefs().then(loadCases);
 </script>
 </body>
