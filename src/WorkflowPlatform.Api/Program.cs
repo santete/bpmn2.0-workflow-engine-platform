@@ -34,6 +34,8 @@ builder.Services.AddProblemDetails();
 builder.Services.AddSingleton<CancelBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CancelBackgroundService>());
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
 if (persistence == "sqlite")
 {
@@ -62,6 +64,8 @@ else
 var app = builder.Build();
 
 app.UseResponseCompression();
+app.UseCors();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.UseMiddleware<RateLimitMiddleware>();
@@ -246,6 +250,10 @@ app.MapPost("/cases/{id:guid}/cancel", async (Guid id, ICaseReadStore store, Can
 
 app.MapGet("/cases/{id:guid}/history", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)
     => store.Get(id) is null ? Results.NotFound() : Results.Ok(historyStore.List(id)));
+
+app.MapGet("/cases/{id:guid}/history/verify", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)
+    => store.Get(id) is null ? Results.NotFound()
+        : historyStore.VerifyIntegrity(id) ? Results.Ok(new { integrity = "valid" }) : Results.Conflict(new { integrity = "tampered", message = "Audit trail checksum chain is broken." }));
 
 app.MapGet("/processes/{key}/state", async (string key, IProcessPort wf) =>
 {

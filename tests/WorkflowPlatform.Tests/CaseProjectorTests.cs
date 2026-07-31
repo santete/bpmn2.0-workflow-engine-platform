@@ -30,6 +30,7 @@ public class CaseProjectorTests
         public void Append(CaseHistoryEntry entry) => Entries.Add(entry);
         public IReadOnlyList<CaseHistoryEntry> List(Guid caseId)
             => Entries.Where(e => e.CaseId == caseId).ToList();
+        public bool VerifyIntegrity(Guid caseId) => true;
     }
 
     private static (CaseProjector projector, FakeReadStore views, FakeHistoryStore history) Setup(Guid caseId)

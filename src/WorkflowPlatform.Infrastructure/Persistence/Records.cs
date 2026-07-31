@@ -45,4 +45,6 @@ public sealed class CaseHistoryRecord
     public string? Actor { get; set; }
     public string? Decision { get; set; }
     public DateTimeOffset OccurredAt { get; set; }
+    public string? Checksum { get; set; }
+    public string? PreviousChecksum { get; set; }
 }
