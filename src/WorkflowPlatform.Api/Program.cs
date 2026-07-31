@@ -51,6 +51,7 @@ var app = builder.Build();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+app.UseMiddleware<IdentityMiddleware>();
 
 if (persistence == "sqlite")
 {
@@ -139,21 +140,31 @@ app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store, HttpContext ctx) 
 
 app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store, HttpContext ctx) =>
 {
+    var view = store.Get(id);
+    if (view is null) return Results.NotFound();
+
     var ifMatch = ctx.Request.Headers.IfMatch;
     if (ifMatch.Count > 0)
     {
-        var view = store.Get(id);
-        if (view is null) return Results.NotFound();
         var expected = ifMatch.ToString().Trim('"');
         if (view.Version.ToString() != expected)
             return Results.StatusCode(StatusCodes.Status412PreconditionFailed);
+    }
+
+    var actor = ctx.Items["User"] as string ?? req.Actor ?? "system";
+
+    if (!string.IsNullOrWhiteSpace(view.CurrentTaskAssignee)
+        && !string.Equals(view.CurrentTaskAssignee, actor, StringComparison.OrdinalIgnoreCase))
+    {
+        return Results.Json(new { error = $"Bước này được phân công cho '{view.CurrentTaskAssignee}', không phải '{actor}'." },
+            statusCode: StatusCodes.Status403Forbidden);
     }
 
     await wf.CompleteUserTaskAsync(new CompleteTaskCommand(
         BusinessKey: id.ToString(),
         TaskId: req.TaskId,
         Variables: new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum(req.Decision ?? "APPROVED") },
-        Actor: req.Actor ?? "system"));
+        Actor: actor));
 
     return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
 });

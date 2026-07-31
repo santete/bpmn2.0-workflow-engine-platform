@@ -1,1 +1,4 @@
-- Prefers status line to display context usage, model info, and cache information next to accept mode indicator for real-time visibility of environment state. Confidence: 0.6
+- Prefers status line to display context usage, model info, and cache information next to accept mode indicator for real-time visibility of environment state. Confidence: 0.8
+- Communicates in Vietnamese and expects responses in Vietnamese. Confidence: 0.9
+- Prefers iterative, milestone-driven development workflow: checks current project status and milestone position, then proceeds with the next incremental feature. Confidence: 0.8
+- When presented with feature options, favors the recommended/default choice over more ambitious alternatives. Confidence: 0.7

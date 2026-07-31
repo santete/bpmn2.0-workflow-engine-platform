@@ -33,6 +33,7 @@ public class PersistenceIntegrationTests
         using (var factory = SqliteFactory(dbPath))
         {
             var client = factory.CreateClient();
+            client.DefaultRequestHeaders.Add("X-User", "thamdinh");
             var create = await client.PostAsJsonAsync("/cases", new { title = "Persist", content = "x" });
             id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
             await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "review" });

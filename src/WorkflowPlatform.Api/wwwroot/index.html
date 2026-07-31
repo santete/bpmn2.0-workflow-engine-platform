@@ -98,6 +98,9 @@
     <!-- Cases -->
     <div class="card full">
       <h2>③ Hồ sơ đang chạy</h2>
+      <div class="row">
+        <div><label>Người thao tác</label><input id="actor-name" placeholder="VD: thamdinh" /></div>
+      </div>
       <div id="list"></div>
     </div>
   </div>
@@ -164,11 +167,14 @@ async function createCase(){
 }
 async function complete(id, taskId, decision){
   const version = versionById[id];
+  const actor = document.getElementById("actor-name").value.trim();
   const headers = {"Content-Type":"application/json"};
   if (version) headers["If-Match"] = '"'+version+'"';
+  if (actor) headers["X-User"] = actor;
   const r = await fetch(`/cases/${id}/complete-task`,{method:"POST",headers,
     body: JSON.stringify({ taskId, decision })});
-  if (r.status === 412){ alert("Hồ sơ đã bị thay đổi bởi người khác. Vui long tai lai trang."); }
+  if (r.status === 403){ alert("Bạn không phải người được phân công cho bước này."); }
+  else if (r.status === 412){ alert("Hồ sơ đã bị thay đổi bởi người khác. Vui long tai lai trang."); }
   loadCases();
 }
 let versionById = {};

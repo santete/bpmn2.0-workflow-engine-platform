@@ -15,6 +15,13 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
 
     public CaseWorkflowE2ETests(InMemoryApiFactory factory) => _factory = factory;
 
+    private HttpClient ClientAsWeb(string? user = null)
+    {
+        var c = _factory.CreateClient();
+        if (user is not null) c.DefaultRequestHeaders.Add("X-User", user);
+        return c;
+    }
+
     private sealed record CreatedResponse(Guid Id);
     private sealed record CaseViewDto(
         Guid Id, string Title, string BusinessStatus, string WorkflowStatus,
@@ -31,6 +38,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         var client = _factory
             .WithWebHostBuilder(b => b.UseSetting("WF_ENGINE", engine))
             .CreateClient();
+        client.DefaultRequestHeaders.Add("X-User", "thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "Ho so A", content = "noi dung mat" });
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
@@ -39,7 +47,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         var afterCreate = await client.GetFromJsonAsync<CaseViewDto>($"/cases/{id}");
         Assert.Equal("review", afterCreate!.CurrentTaskId);
         Assert.Equal("thamdinh", afterCreate.CurrentTaskAssignee);
-        Assert.Equal("Tham dinh ho so", afterCreate.WorkflowStatus);   // status = tên bước động
+        Assert.Equal("Tham dinh ho so", afterCreate.WorkflowStatus);
         Assert.Equal("InReview", afterCreate.BusinessStatus);
 
         var afterReview = await (await client.PostAsJsonAsync(
@@ -47,6 +55,9 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         Assert.Equal("approve", afterReview!.CurrentTaskId);
         Assert.Equal("Phe duyet", afterReview.WorkflowStatus);
 
+        // Switch to approver
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "lanhdao");
         var afterApprove = await (await client.PostAsJsonAsync(
             $"/cases/{id}/complete-task", new { taskId = "approve" })).Content.ReadFromJsonAsync<CaseViewDto>();
         Assert.Null(afterApprove!.CurrentTaskId);
@@ -57,12 +68,14 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     [Fact]
     public async Task Reject_decision_routes_case_to_rejected_branch()
     {
-        var client = _factory.CreateClient();
+        var client = ClientAsWeb("thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "Ho so B", content = "x" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
 
         await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "review" });
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "lanhdao");
         var afterReject = await (await client.PostAsJsonAsync(
             $"/cases/{id}/complete-task", new { taskId = "approve", decision = "REJECTED" }))
             .Content.ReadFromJsonAsync<CaseViewDto>();
@@ -83,24 +96,26 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     [Fact]
     public async Task History_endpoint_returns_entries_in_order()
     {
-        var client = _factory.CreateClient();
+        var client = ClientAsWeb("thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "History test" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
 
         await client.PostAsJsonAsync($"/cases/{id}/complete-task",
-            new { taskId = "review", decision = "APPROVED", actor = "reviewer1" });
+            new { taskId = "review", decision = "APPROVED" });
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "lanhdao");
         await client.PostAsJsonAsync($"/cases/{id}/complete-task",
-            new { taskId = "approve", decision = "REJECTED", actor = "approver1" });
+            new { taskId = "approve", decision = "REJECTED" });
 
         var history = await client.GetFromJsonAsync<List<HistoryEntryDto>>($"/cases/{id}/history");
         Assert.Equal(3, history!.Count);
         Assert.Equal("TaskCompleted", history[0].Kind);
         Assert.Equal("review", history[0].TaskId);
-        Assert.Equal("reviewer1", history[0].Actor);
+        Assert.Equal("thamdinh", history[0].Actor);
         Assert.Equal("TaskCompleted", history[1].Kind);
         Assert.Equal("approve", history[1].TaskId);
-        Assert.Equal("approver1", history[1].Actor);
+        Assert.Equal("lanhdao", history[1].Actor);
         Assert.Equal("REJECTED", history[1].Decision);
         Assert.Equal("ProcessRejected", history[2].Kind);
     }
@@ -132,7 +147,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     [Fact]
     public async Task Complete_with_correct_version_succeeds()
     {
-        var client = _factory.CreateClient();
+        var client = ClientAsWeb("thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "Concurrency OK" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
@@ -152,7 +167,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     [Fact]
     public async Task Complete_with_stale_version_returns_412()
     {
-        var client = _factory.CreateClient();
+        var client = ClientAsWeb("thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "Concurrency KO" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
@@ -179,7 +194,7 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
     [Fact]
     public async Task Complete_without_if_match_still_works()
     {
-        var client = _factory.CreateClient();
+        var client = ClientAsWeb("thamdinh");
 
         var create = await client.PostAsJsonAsync("/cases", new { title = "No ETag" });
         var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;

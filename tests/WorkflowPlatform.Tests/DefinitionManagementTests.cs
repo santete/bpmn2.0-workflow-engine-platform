@@ -46,17 +46,22 @@ public class DefinitionManagementTests : IClassFixture<InMemoryApiFactory>
         Assert.Equal("s1", v0.CurrentTaskId);
         Assert.Equal("Kiem tra", v0.CurrentTaskName);
 
-        // 3) Đi qua các bước động.
+        // 3) Đi qua các bước động — gửi X-User khớp assignee.
+        client.DefaultRequestHeaders.Add("X-User", "kiem_tra_vien");
         var v1 = await (await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "s1" }))
             .Content.ReadFromJsonAsync<CaseViewDto>();
         Assert.Equal("s2", v1!.CurrentTaskId);
         Assert.Equal("Xac minh", v1.CurrentTaskName);
 
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "xac_minh_vien");
         var v2 = await (await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "s2" }))
             .Content.ReadFromJsonAsync<CaseViewDto>();
         Assert.Equal("s3", v2!.CurrentTaskId);
 
-        // 4) Bước quyết định → từ chối.
+        // 4) Bước quyết định → từ chối (không enforce vì assignee null).
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "anyone");
         var v3 = await (await client.PostAsJsonAsync($"/cases/{id}/complete-task",
                 new { taskId = "s3", decision = "REJECTED" }))
             .Content.ReadFromJsonAsync<CaseViewDto>();
