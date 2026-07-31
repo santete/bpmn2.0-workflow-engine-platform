@@ -76,5 +76,48 @@ public class AuthE2ETests : IClassFixture<InMemoryApiFactory>
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
     }
 
+    [Fact]
+    public async Task Regular_user_only_sees_own_cases()
+    {
+        var userA = ClientWithUser("userA");
+        var userB = ClientWithUser("userB");
+
+        await userA.PostAsJsonAsync("/cases", new { title = "A-case-1" });
+        await userA.PostAsJsonAsync("/cases", new { title = "A-case-2" });
+        await userB.PostAsJsonAsync("/cases", new { title = "B-case-1" });
+
+        var aCases = await userA.GetFromJsonAsync<List<CaseViewDto>>("/cases");
+        Assert.All(aCases!, c => Assert.Equal("userA", c.Owner));
+        Assert.True(aCases!.Count >= 2);
+
+        var bCases = await userB.GetFromJsonAsync<List<CaseViewDto>>("/cases");
+        Assert.All(bCases!, c => Assert.Equal("userB", c.Owner));
+    }
+
+    [Fact]
+    public async Task Admin_sees_all_cases()
+    {
+        var userA = ClientWithUser("userA");
+        await userA.PostAsJsonAsync("/cases", new { title = "A" });
+        await userA.PostAsJsonAsync("/cases", new { title = "A2" });
+
+        var admin = ClientWithUser("boss", "admin");
+        var cases = await admin.GetFromJsonAsync<List<CaseViewDto>>("/cases");
+        Assert.True(cases!.Count >= 2);
+    }
+
+    [Fact]
+    public async Task User_cannot_see_other_case_by_id()
+    {
+        var userA = ClientWithUser("userA");
+        var create = await userA.PostAsJsonAsync("/cases", new { title = "Secret" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var userB = ClientWithUser("userB");
+        var resp = await userB.GetAsync($"/cases/{id}");
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
+    private sealed record CaseViewDto(Guid Id, string? Owner);
     private sealed record DefKeyDto(string Key);
 }

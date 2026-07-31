@@ -21,11 +21,12 @@ public sealed class CaseProjector : IWorkflowEventHandler
         _history = history;
     }
 
-    public void OnCaseCreated(Guid caseId, string title, string definitionKey)
+    public void OnCaseCreated(Guid caseId, string title, string definitionKey, string? owner = null)
         => _store.Upsert(new CaseView
         {
             Id = caseId, Title = title, DefinitionKey = definitionKey,
-            BusinessStatus = "Draft", WorkflowStatus = "Khoi tao", Version = Guid.NewGuid()
+            BusinessStatus = "Draft", WorkflowStatus = "Khoi tao", Version = Guid.NewGuid(),
+            Owner = owner
         });
 
     public Task HandleAsync(WorkflowEvent evt, CancellationToken ct = default)

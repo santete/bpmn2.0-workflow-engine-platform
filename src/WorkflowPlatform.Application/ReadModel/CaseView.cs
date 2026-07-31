@@ -14,4 +14,5 @@ public sealed class CaseView
     public string? CurrentTaskName { get; set; }
     public string? CurrentTaskAssignee { get; set; }
     public Guid Version { get; set; } = Guid.Empty;
+    public string? Owner { get; set; }
 }

@@ -113,27 +113,44 @@ app.MapPost("/definitions", async (CreateDefinitionRequest req, IProcessDefiniti
 });
 
 // --- Hồ sơ (instance của một quy trình bất kỳ) ---
-app.MapPost("/cases", async (CreateCaseRequest req, ICaseRepository repo, CaseProjector projector, IProcessPort wf) =>
+app.MapPost("/cases", async (CreateCaseRequest req, ICaseRepository repo, CaseProjector projector, IProcessPort wf, HttpContext ctx) =>
 {
     var definitionKey = string.IsNullOrWhiteSpace(req.DefinitionKey) ? "case-approval" : req.DefinitionKey!;
+    var owner = ctx.Items["User"] as string ?? req.CreatedBy;
     var @case = Case.Create(req.Title, req.Content ?? string.Empty);
     repo.Add(@case);
-    projector.OnCaseCreated(@case.Id, @case.Title, definitionKey);
+    projector.OnCaseCreated(@case.Id, @case.Title, definitionKey, owner);
 
     await wf.StartProcessAsync(new StartProcessCommand(
         ProcessDefinitionKey: definitionKey,
         BusinessKey: @case.Id.ToString(),
         Variables: new Dictionary<string, ProcessVariable> { ["caseRef"] = ProcessVariable.Ref("case", @case.Id.ToString()) },
-        Initiator: req.CreatedBy ?? "system"));
+        Initiator: owner ?? "system"));
 
     return Results.Created($"/cases/{@case.Id}", new { id = @case.Id });
 });
 
-app.MapGet("/cases", (ICaseReadStore store) => Results.Ok(store.All()));
+app.MapGet("/cases", (ICaseReadStore store, HttpContext ctx) =>
+{
+    var currentUser = ctx.Items["User"] as string;
+    var isAdmin = "admin".Equals(ctx.Items["Role"] as string, StringComparison.OrdinalIgnoreCase);
+    var all = store.All();
+    if (isAdmin || currentUser is null) return Results.Ok(all);
+    return Results.Ok(all.Where(v => v.Owner == currentUser).ToList());
+});
+
+static bool IsOwnerOrAdmin(CaseView view, HttpContext ctx)
+{
+    var currentUser = ctx.Items["User"] as string;
+    if (currentUser is null) return true;
+    if ("admin".Equals(ctx.Items["Role"] as string, StringComparison.OrdinalIgnoreCase)) return true;
+    return view.Owner == currentUser;
+}
 
 app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store, HttpContext ctx) =>
 {
     if (store.Get(id) is not { } view) return Results.NotFound();
+    if (!IsOwnerOrAdmin(view, ctx)) return Results.NotFound();
     ctx.Response.Headers["ETag"] = $"\"{view.Version}\"";
     return Results.Ok(view);
 });
