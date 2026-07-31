@@ -171,7 +171,7 @@ app.MapGet("/cases/{id:guid}", (Guid id, ICaseReadStore store, HttpContext ctx) 
     return Results.Ok(view);
 });
 
-app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store, HttpContext ctx) =>
+app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskRequest req, IProcessPort wf, ICaseReadStore store, IProcessDefinitionStore defStore, HttpContext ctx) =>
 {
     var view = store.Get(id);
     if (view is null) return Results.NotFound();
@@ -186,11 +186,42 @@ app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskReques
 
     var actor = ctx.Items["User"] as string ?? req.Actor ?? "system";
 
+    // Counter-sign logic: nếu đang pending → chỉ countersigner mới được complete
+    if (view.PendingCounterSign)
+    {
+        if (!string.Equals(view.CounterSigner, actor, StringComparison.OrdinalIgnoreCase))
+            return Results.Json(new { error = $"Cần người phê duyệt '{view.CounterSigner}' để hoàn tất, không phải '{actor}'." },
+                statusCode: StatusCodes.Status403Forbidden);
+
+        // Countersigner approved → real complete
+        await wf.CompleteUserTaskAsync(new CompleteTaskCommand(
+            BusinessKey: id.ToString(),
+            TaskId: req.TaskId,
+            Variables: new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum(req.Decision ?? "APPROVED") },
+            Actor: actor));
+        var updView = store.Get(id);
+        return updView is not null ? Results.Ok(updView) : Results.NotFound();
+    }
+
+    // Assignee check
     if (!string.IsNullOrWhiteSpace(view.CurrentTaskAssignee)
         && !string.Equals(view.CurrentTaskAssignee, actor, StringComparison.OrdinalIgnoreCase))
     {
         return Results.Json(new { error = $"Bước này được phân công cho '{view.CurrentTaskAssignee}', không phải '{actor}'." },
             statusCode: StatusCodes.Status403Forbidden);
+    }
+
+    // Check if current step requires counter-sign
+    var def = defStore.Get(view.DefinitionKey);
+    var currentStep = def?.Steps.FirstOrDefault(s => s.Id == view.CurrentTaskId);
+    if (currentStep is { RequiresCounterSign: true })
+    {
+        view.CounterSigner = currentStep.CounterSigner;
+        view.PendingCounterSign = true;
+        view.WorkflowStatus = $"Cho ky duyet ({currentStep.CounterSigner})";
+        view.Version = Guid.NewGuid();
+        store.Upsert(view);
+        return Results.Ok(view);
     }
 
     await wf.CompleteUserTaskAsync(new CompleteTaskCommand(
@@ -199,7 +230,8 @@ app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskReques
         Variables: new Dictionary<string, ProcessVariable> { ["decision"] = ProcessVariable.Enum(req.Decision ?? "APPROVED") },
         Actor: actor));
 
-    return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
+    var endView = store.Get(id);
+    return endView is not null ? Results.Ok(endView) : Results.NotFound();
 });
 
 app.MapPost("/cases/{id:guid}/cancel", async (Guid id, ICaseReadStore store, CancelBackgroundService bg) =>

@@ -46,6 +46,8 @@ public sealed class CaseProjector : IWorkflowEventHandler
                 view.CurrentTaskName = created.TaskName;
                 view.CurrentTaskAssignee = created.Assignee;
                 view.WorkflowStatus = created.TaskName;
+                view.PendingCounterSign = false;
+                view.CounterSigner = null;
                 if (view.BusinessStatus is "Draft")
                 {
                     var @case = _repository.Get(caseId);

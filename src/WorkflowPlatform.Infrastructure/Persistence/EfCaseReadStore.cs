@@ -27,6 +27,8 @@ public sealed class EfCaseReadStore : ICaseReadStore
             existing.CurrentTaskAssignee = view.CurrentTaskAssignee;
             if (view.Version != Guid.Empty) existing.Version = view.Version;
             existing.Owner = view.Owner;
+            existing.PendingCounterSign = view.PendingCounterSign;
+            existing.CounterSigner = view.CounterSigner;
         }
         ctx.SaveChanges();
     }
