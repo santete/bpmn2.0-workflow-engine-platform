@@ -12,6 +12,8 @@ public interface IReplayLogStore
     string? GetDefinitionKey(string businessKey);
     IReadOnlyList<CompletionEntry> GetCompletions(string businessKey);
     void Append(string businessKey, string taskId, string? decision);
+    bool IsCancelled(string businessKey);
+    void Cancel(string businessKey);
 }
 
 /// <summary>Mặc định in-memory (test / chế độ không persistence).</summary>
@@ -19,6 +21,7 @@ public sealed class InMemoryReplayLogStore : IReplayLogStore
 {
     private readonly Dictionary<string, string> _defByKey = new();
     private readonly Dictionary<string, List<CompletionEntry>> _log = new();
+    private readonly HashSet<string> _cancelled = new();
     private readonly object _gate = new();
 
     public void EnsureInstance(string businessKey, string definitionKey)
@@ -47,5 +50,15 @@ public sealed class InMemoryReplayLogStore : IReplayLogStore
             if (!_log.TryGetValue(businessKey, out var l)) { l = new List<CompletionEntry>(); _log[businessKey] = l; }
             l.Add(new CompletionEntry(taskId, decision));
         }
+    }
+
+    public bool IsCancelled(string businessKey)
+    {
+        lock (_gate) return _cancelled.Contains(businessKey);
+    }
+
+    public void Cancel(string businessKey)
+    {
+        lock (_gate) _cancelled.Add(businessKey);
     }
 }

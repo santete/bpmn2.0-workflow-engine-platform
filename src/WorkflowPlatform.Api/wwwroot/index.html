@@ -177,6 +177,12 @@ async function complete(id, taskId, decision){
   else if (r.status === 412){ alert("Hồ sơ đã bị thay đổi bởi người khác. Vui long tai lai trang."); }
   loadCases();
 }
+async function cancelCase(id){
+  if (!confirm("Huy ho so nay?")) return;
+  const r = await fetch(`/cases/${id}/cancel`,{method:"POST"});
+  if (r.status === 409){ alert("Ho so da ket thuc, khong the huy."); }
+  loadCases();
+}
 let versionById = {};
 function actionsFor(c){
   if (!c.currentTaskId) return `<span class="pill ${bizPill(c.businessStatus)}">${c.businessStatus}</span>`;
@@ -202,7 +208,7 @@ function renderCases(cases){
         <td>${c.currentTaskName?`<div class="flow">▸ ${esc(c.currentTaskName)}</div>`:"—"}</td>
         <td>${c.currentTaskAssignee?`<span class="badge">${esc(c.currentTaskAssignee)}</span>`:"—"}</td>
         <td><div class="actions">${actionsFor(c)}</div></td>
-        <td><button class="ghost small" onclick="showHistory('${c.id}',this)">Lịch sử</button></td>
+        <td><button class="ghost small" onclick="showHistory('${c.id}',this)">Lịch sử</button>${c.currentTaskId?` <button class="ghost small no" onclick="cancelCase('${c.id}')">Hủy</button>`:""}</td>
       </tr>`;}).join("") + `</tbody></table>`;
 }
 

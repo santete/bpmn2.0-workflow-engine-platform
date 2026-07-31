@@ -127,4 +127,18 @@ public class CaseProjectorTests
         var v2 = views.Get(caseId)!.Version;
         Assert.NotEqual(v1, v2);
     }
+
+    [Fact]
+    public async Task ProcessCancelled_clears_task_and_appends_history()
+    {
+        var caseId = Guid.NewGuid();
+        var (projector, views, history) = Setup(caseId);
+
+        await projector.HandleAsync(new ProcessCancelled(caseId.ToString(), DateTimeOffset.UtcNow));
+
+        var view = views.Get(caseId)!;
+        Assert.Equal("Da huy", view.WorkflowStatus);
+        Assert.Null(view.CurrentTaskId);
+        Assert.Single(history.List(caseId), e => e.Kind == CaseHistoryKind.ProcessCancelled);
+    }
 }

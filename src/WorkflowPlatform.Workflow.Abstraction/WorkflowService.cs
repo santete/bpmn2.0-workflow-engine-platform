@@ -40,6 +40,13 @@ public sealed class WorkflowService : IProcessPort
             await _publisher.PublishAsync(evt, ct);
     }
 
+    public async Task CancelProcessAsync(string businessKey, CancellationToken ct = default)
+    {
+        var events = _engine.Cancel(businessKey);
+        foreach (var evt in events)
+            await _publisher.PublishAsync(evt, ct);
+    }
+
     public Task<ProcessStateView> GetProcessStateAsync(string businessKey, CancellationToken ct = default)
         => Task.FromResult(_engine.GetState(businessKey));
 }

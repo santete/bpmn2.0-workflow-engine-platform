@@ -63,6 +63,18 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
         return events;
     }
 
+    public IReadOnlyList<WorkflowEvent> Cancel(string businessKey)
+    {
+        if (!_instances.TryGetValue(businessKey, out var instance))
+            throw new InvalidOperationException($"Không tìm thấy tiến trình cho '{businessKey}'.");
+        if (instance.Status != ProcessStatus.Running)
+            throw new InvalidOperationException("Tiến trình đã kết thúc.");
+
+        instance.Status = ProcessStatus.Cancelled;
+        instance.CurrentTaskId = null;
+        return new List<WorkflowEvent> { new ProcessCancelled(businessKey, DateTimeOffset.UtcNow) };
+    }
+
     public IReadOnlyList<WorkflowEvent> CompleteTask(CompleteTaskCommand command)
     {
         if (!_instances.TryGetValue(command.BusinessKey, out var instance))

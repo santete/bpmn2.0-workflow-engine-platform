@@ -87,6 +87,15 @@ public sealed class CaseProjector : IWorkflowEventHandler
                     view.BusinessStatus = "Approved";
                 }
                 break;
+
+            case ProcessCancelled cancelled:
+                view.CurrentTaskId = null;
+                view.CurrentTaskName = null;
+                view.CurrentTaskAssignee = null;
+                view.WorkflowStatus = "Da huy";
+                _history.Append(new CaseHistoryEntry(
+                    caseId, CaseHistoryKind.ProcessCancelled, null, null, null, null, cancelled.OccurredAt));
+                break;
         }
 
         view.Version = Guid.NewGuid();

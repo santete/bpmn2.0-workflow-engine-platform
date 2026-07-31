@@ -119,6 +119,26 @@ public abstract class EngineContractTestsBase
         Assert.Equal(ProcessStatus.Running, state.Status);
         Assert.Equal("review", Assert.Single(state.ActiveTasks).TaskId);
     }
+
+    [Fact]
+    public void Cancel_ends_running_process_with_cancelled_event_and_state()
+    {
+        var engine = Deployed();
+        engine.Start(Start("I"));
+        var events = engine.Cancel("I");
+
+        Assert.Contains(events, e => e is ProcessCancelled);
+        Assert.Equal(ProcessStatus.Cancelled, engine.GetState("I").Status);
+    }
+
+    [Fact]
+    public void Cancel_on_already_ended_process_is_rejected()
+    {
+        var engine = Deployed();
+        engine.Start(Start("J"));
+        engine.Cancel("J");
+        Assert.Throws<InvalidOperationException>(() => engine.Cancel("J"));
+    }
 }
 
 public sealed class SimpleEngineContractTests : EngineContractTestsBase

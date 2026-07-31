@@ -21,3 +21,7 @@ public sealed record ProcessCompleted(string BusinessKey, DateTimeOffset Occurre
 /// <summary>Tiến trình kết thúc theo nhánh từ chối (exclusiveGateway → end reject).</summary>
 public sealed record ProcessRejected(string BusinessKey, DateTimeOffset OccurredAt)
     : WorkflowEvent(BusinessKey, OccurredAt);
+
+/// <summary>Tiến trình bị hủy bởi người dùng (không phải kết thúc BPMN tự nhiên).</summary>
+public sealed record ProcessCancelled(string BusinessKey, DateTimeOffset OccurredAt)
+    : WorkflowEvent(BusinessKey, OccurredAt);

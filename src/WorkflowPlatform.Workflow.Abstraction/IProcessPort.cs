@@ -10,5 +10,6 @@ public interface IProcessPort
     Task DeployDefinitionAsync(CanonicalBpmn bpmn, CancellationToken ct = default);
     Task<ProcessStartedAck> StartProcessAsync(StartProcessCommand command, CancellationToken ct = default);
     Task CompleteUserTaskAsync(CompleteTaskCommand command, CancellationToken ct = default);
+    Task CancelProcessAsync(string businessKey, CancellationToken ct = default);
     Task<ProcessStateView> GetProcessStateAsync(string businessKey, CancellationToken ct = default);
 }

@@ -203,6 +203,47 @@ public class CaseWorkflowE2ETests : IClassFixture<InMemoryApiFactory>
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
     }
 
+    [Fact]
+    public async Task Cancel_running_case_returns_200_and_marks_cancelled()
+    {
+        var client = ClientAsWeb("thamdinh");
+        var create = await client.PostAsJsonAsync("/cases", new { title = "Cancel me" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var resp = await client.PostAsJsonAsync($"/cases/{id}/cancel", new { });
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+
+        var view = await client.GetFromJsonAsync<CaseViewDto>($"/cases/{id}");
+        Assert.Equal("Da huy", view!.WorkflowStatus);
+        Assert.Null(view.CurrentTaskId);
+
+        var history = await client.GetFromJsonAsync<List<HistoryEntryDto>>($"/cases/{id}/history");
+        Assert.Contains(history!, e => e.Kind == "ProcessCancelled");
+    }
+
+    [Fact]
+    public async Task Cancel_ended_case_returns_409()
+    {
+        var client = ClientAsWeb("thamdinh");
+        var create = await client.PostAsJsonAsync("/cases", new { title = "Already done" });
+        var id = (await create.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+        await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "review" });
+        client.DefaultRequestHeaders.Remove("X-User");
+        client.DefaultRequestHeaders.Add("X-User", "lanhdao");
+        await client.PostAsJsonAsync($"/cases/{id}/complete-task", new { taskId = "approve" });
+
+        var resp = await client.PostAsync($"/cases/{id}/cancel", null);
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+    }
+
+    [Fact]
+    public async Task Cancel_unknown_case_returns_404()
+    {
+        var client = ClientAsWeb("thamdinh");
+        var resp = await client.PostAsync($"/cases/{Guid.NewGuid()}/cancel", null);
+        Assert.Equal(HttpStatusCode.NotFound, resp.StatusCode);
+    }
+
     private sealed record ProcessStateViewJson(string BusinessKey, string DefinitionKey, string Status, TaskViewJson[] ActiveTasks);
     private sealed record TaskViewJson(string TaskId, string Name);
 }

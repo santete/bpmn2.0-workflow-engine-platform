@@ -46,4 +46,23 @@ public sealed class EfReplayLogStore : IReplayLogStore
         });
         ctx.SaveChanges();
     }
+
+    public bool IsCancelled(string businessKey)
+    {
+        using var ctx = _factory.CreateDbContext();
+        return ctx.ReplayInstances
+            .AsNoTracking()
+            .Any(x => x.BusinessKey == businessKey && x.IsCancelled);
+    }
+
+    public void Cancel(string businessKey)
+    {
+        using var ctx = _factory.CreateDbContext();
+        var ri = ctx.ReplayInstances.FirstOrDefault(x => x.BusinessKey == businessKey);
+        if (ri is not null)
+        {
+            ri.IsCancelled = true;
+            ctx.SaveChanges();
+        }
+    }
 }

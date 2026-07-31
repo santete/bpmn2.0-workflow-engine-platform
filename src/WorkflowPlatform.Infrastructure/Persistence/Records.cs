@@ -14,6 +14,7 @@ public sealed class ReplayInstanceRecord
 {
     public string BusinessKey { get; set; } = string.Empty;
     public string DefinitionKey { get; set; } = string.Empty;
+    public bool IsCancelled { get; set; }
 }
 
 public sealed class ReplayCompletionRecord

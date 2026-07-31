@@ -1,6 +1,6 @@
 namespace WorkflowPlatform.Application.ReadModel;
 
-public enum CaseHistoryKind { TaskCompleted, ProcessCompleted, ProcessRejected }
+public enum CaseHistoryKind { TaskCompleted, ProcessCompleted, ProcessRejected, ProcessCancelled }
 
 /// <summary>
 /// Một dòng lịch sử bất biến của hồ sơ (append-only): ai hoàn thành task nào, quyết định gì, lúc nào;

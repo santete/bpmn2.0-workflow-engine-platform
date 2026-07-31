@@ -169,6 +169,18 @@ app.MapPost("/cases/{id:guid}/complete-task", async (Guid id, CompleteTaskReques
     return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
 });
 
+app.MapPost("/cases/{id:guid}/cancel", async (Guid id, IProcessPort wf, ICaseReadStore store) =>
+{
+    var view = store.Get(id);
+    if (view is null) return Results.NotFound();
+    if (view.CurrentTaskId is null) return Results.Conflict();
+
+    try { await wf.CancelProcessAsync(id.ToString()); }
+    catch (InvalidOperationException) { return Results.Conflict(); }
+
+    return store.Get(id) is { } updated ? Results.Ok(updated) : Results.NotFound();
+});
+
 app.MapGet("/cases/{id:guid}/history", (Guid id, ICaseHistoryStore historyStore, ICaseReadStore store)
     => store.Get(id) is null ? Results.NotFound() : Results.Ok(historyStore.List(id)));
 

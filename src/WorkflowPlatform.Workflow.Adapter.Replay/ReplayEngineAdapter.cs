@@ -67,11 +67,30 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
         };
     }
 
+    public IReadOnlyList<WorkflowEvent> Cancel(string businessKey)
+    {
+        var defKey = _log.GetDefinitionKey(businessKey)
+            ?? throw new InvalidOperationException($"Không tìm thấy tiến trình cho '{businessKey}'.");
+        if (_log.IsCancelled(businessKey))
+            throw new InvalidOperationException("Tiến trình đã kết thúc.");
+
+        var def = _definitions[defKey];
+        var (status, _) = Compute(def, _log.GetCompletions(businessKey));
+        if (status != ProcessStatus.Running)
+            throw new InvalidOperationException("Tiến trình đã kết thúc.");
+
+        _log.Cancel(businessKey);
+        return new List<WorkflowEvent> { new ProcessCancelled(businessKey, DateTimeOffset.UtcNow) };
+    }
+
     public ProcessStateView GetState(string businessKey)
     {
         var defKey = _log.GetDefinitionKey(businessKey);
         if (defKey is null)
             return new ProcessStateView(businessKey, string.Empty, ProcessStatus.NotFound, Array.Empty<TaskView>());
+
+        if (_log.IsCancelled(businessKey))
+            return new ProcessStateView(businessKey, defKey, ProcessStatus.Cancelled, Array.Empty<TaskView>());
 
         var def = _definitions[defKey];
         var (status, current) = Compute(def, _log.GetCompletions(businessKey));
