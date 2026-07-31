@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 using WorkflowPlatform.Api.Infrastructure;
 using WorkflowPlatform.Application.Definitions;
 using WorkflowPlatform.Application.ReadModel;
@@ -12,6 +13,7 @@ using WorkflowPlatform.Workflow.Adapter.Simple;
 using WorkflowPlatform.Workflow.Bpmn;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog((ctx, cfg) => cfg.ReadFrom.Configuration(ctx.Configuration));
 builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 var cfg = builder.Configuration;
 
