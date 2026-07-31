@@ -1,6 +1,6 @@
 namespace WorkflowPlatform.Workflow.Bpmn;
 
-public enum NodeKind { Start, UserTask, Gateway, End }
+public enum NodeKind { Start, UserTask, Gateway, ParallelGateway, End }
 
 public sealed record BpmnNode(string Id, string Name, NodeKind Kind, string? Assignee = null);
 
@@ -30,9 +30,35 @@ public sealed class BpmnDefinition
             var flow = ChooseFlow(currentId, decide);
             if (flow is null) return null;
             if (!Nodes.TryGetValue(flow.TargetRef, out var node)) return null;
-            if (node.Kind is NodeKind.UserTask or NodeKind.End) return node;
-            currentId = node.Id; // Start/Gateway → đi tiếp
+            if (node.Kind is NodeKind.UserTask or NodeKind.ParallelGateway or NodeKind.End) return node;
+            currentId = node.Id;
         }
+    }
+
+    /// <summary>Sau parallelGateway: trả về tất cả node đến song song (chỉ userTask).</summary>
+    public IReadOnlyList<BpmnNode> NextStops(string fromNodeId)
+    {
+        if (!Nodes.TryGetValue(fromNodeId, out var n) || n.Kind != NodeKind.ParallelGateway)
+            throw new ArgumentException($"'{fromNodeId}' is not a parallel gateway.", nameof(fromNodeId));
+
+        return Outgoing(fromNodeId)
+            .Select(f => Nodes.TryGetValue(f.TargetRef, out var target) && target.Kind == NodeKind.UserTask ? target : null)
+            .Where(n => n is not null)
+            .Select(n => n!)
+            .ToList();
+    }
+
+    /// <summary>Tìm join gateway chung — tất cả node song song phải dẫn đến cùng một nút sau join.</summary>
+    public BpmnNode? JoinTarget(string forkGatewayId)
+    {
+        var next = NextStops(forkGatewayId);
+        if (next.Count == 0) return null;
+
+        // mỗi nhánh sau node song song → luồng dẫn đến join gateway → sau join có 1 luồng → node tiếp
+        var joinNodeId = Outgoing(next[0].Id).Select(f => f.TargetRef).FirstOrDefault();
+        if (string.IsNullOrEmpty(joinNodeId)) return null;
+
+        return NextStop(joinNodeId!);
     }
 
     private BpmnFlow? ChooseFlow(string nodeId, Func<string, string?>? decide)

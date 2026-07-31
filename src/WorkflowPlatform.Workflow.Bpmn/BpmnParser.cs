@@ -30,6 +30,7 @@ public static class BpmnParser
         Add("startEvent", NodeKind.Start);
         Add("userTask", NodeKind.UserTask);
         Add("exclusiveGateway", NodeKind.Gateway);
+        Add("parallelGateway", NodeKind.ParallelGateway);
         Add("endEvent", NodeKind.End);
 
         var flows = new List<BpmnFlow>();

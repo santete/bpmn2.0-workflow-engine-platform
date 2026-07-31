@@ -6,11 +6,6 @@ using WorkflowPlatform.Workflow.Bpmn;
 
 namespace WorkflowPlatform.Workflow.Adapter.Replay;
 
-/// <summary>
-/// Engine #2 — mô hình KHÁC HẲN Simple: KHÔNG lưu con trỏ hiện tại. Chỉ lưu NHẬT KÝ hoàn thành task
-/// (qua <see cref="IReplayLogStore"/>), rồi TÍNH LẠI vị trí bằng cách replay BPMN mỗi lần.
-/// Nhật ký có thể persist (EF) → tiến trình sống sót qua restart. Cùng hợp đồng <see cref="IEngineAdapter"/>.
-/// </summary>
 public sealed class ReplayEngineAdapter : IEngineAdapter
 {
     private readonly ConcurrentDictionary<string, BpmnDefinition> _definitions = new();
@@ -34,12 +29,20 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
         _log.EnsureInstance(command.BusinessKey, def.Key);
 
         var now = DateTimeOffset.UtcNow;
-        var (status, current) = Compute(def, _log.GetCompletions(command.BusinessKey));
-        return new List<WorkflowEvent>
+        var (status, activeNodes) = Compute(def, _log.GetCompletions(command.BusinessKey));
+        var events = new List<WorkflowEvent> { new ProcessStarted(command.BusinessKey, now) };
+
+        if (status == ProcessStatus.Running)
         {
-            new ProcessStarted(command.BusinessKey, now),
-            ToTerminalOrTask(command.BusinessKey, status, current, now)
-        };
+            foreach (var node in activeNodes)
+                events.Add(new TaskCreated(command.BusinessKey, node.Id, node.Name, node.Assignee, now));
+        }
+        else
+        {
+            events.Add(ToTerminal(command.BusinessKey, status, activeNodes.Any() ? activeNodes[0] : null, now));
+        }
+
+        return events;
     }
 
     public IReadOnlyList<WorkflowEvent> CompleteTask(CompleteTaskCommand command)
@@ -48,23 +51,40 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
             ?? throw new InvalidOperationException($"Không tìm thấy tiến trình cho '{command.BusinessKey}'.");
         var def = _definitions[defKey];
 
-        var (status, current) = Compute(def, _log.GetCompletions(command.BusinessKey));
+        var (status, activeNodes) = Compute(def, _log.GetCompletions(command.BusinessKey));
         if (status != ProcessStatus.Running)
             throw new InvalidOperationException("Tiến trình đã kết thúc.");
-        if (current!.Id != command.TaskId)
+        if (!activeNodes.Any(n => n.Id == command.TaskId))
             throw new InvalidOperationException(
-                $"Task '{command.TaskId}' không phải task đang hoạt động ('{current.Id}').");
+                $"Task '{command.TaskId}' không phải task đang hoạt động.");
 
         var decision = command.Variables.TryGetValue("decision", out var dv) ? dv.Value : null;
         _log.Append(command.BusinessKey, command.TaskId, decision);
 
+        var completedNode = def.Nodes[command.TaskId];
         var now = DateTimeOffset.UtcNow;
-        var (next, nextTask) = Compute(def, _log.GetCompletions(command.BusinessKey));
-        return new List<WorkflowEvent>
+        var (nextStatus, nextNodes) = Compute(def, _log.GetCompletions(command.BusinessKey));
+        var events = new List<WorkflowEvent>
         {
-            new TaskCompleted(command.BusinessKey, command.TaskId, current.Name, command.Actor, decision, now),
-            ToTerminalOrTask(command.BusinessKey, next, nextTask, now)
+            new TaskCompleted(command.BusinessKey, command.TaskId, completedNode.Name, command.Actor, decision, now)
         };
+
+        if (nextStatus == ProcessStatus.Running)
+        {
+            // Chỉ emit TaskCreated cho các node MỚI (chưa có trước đó)
+            var newIds = nextNodes.Select(n => n.Id).Except(activeNodes.Select(n => n.Id)).ToList();
+            foreach (var id in newIds)
+            {
+                var node = def.Nodes[id];
+                events.Add(new TaskCreated(command.BusinessKey, node.Id, node.Name, node.Assignee, now));
+            }
+        }
+        else
+        {
+            events.Add(ToTerminal(command.BusinessKey, nextStatus, nextNodes.Any() ? nextNodes[0] : null, now));
+        }
+
+        return events;
     }
 
     public IReadOnlyList<WorkflowEvent> Cancel(string businessKey)
@@ -94,26 +114,59 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
 
         var def = _definitions[defKey];
         var (status, current) = Compute(def, _log.GetCompletions(businessKey));
-        var active = status == ProcessStatus.Running && current is not null
-            ? new[] { new TaskView(current.Id, current.Name) }
-            : Array.Empty<TaskView>();
+        var active = status == ProcessStatus.Running
+            ? current.Select(n => new TaskView(n.Id, n.Name)).ToList()
+            : new List<TaskView>();
         return new ProcessStateView(businessKey, defKey, status, active);
     }
 
-    private static WorkflowEvent ToTerminalOrTask(string businessKey, ProcessStatus status, BpmnNode? node, DateTimeOffset now)
+    private static WorkflowEvent ToTerminal(string businessKey, ProcessStatus status, BpmnNode? node, DateTimeOffset now)
     {
-        if (status != ProcessStatus.Completed)
-            return new TaskCreated(businessKey, node!.Id, node.Name, node.Assignee, now);
-
-        return node is not null && node.Id.Contains("reject", StringComparison.OrdinalIgnoreCase)
-            ? new ProcessRejected(businessKey, now)
-            : new ProcessCompleted(businessKey, now);
+        if (status == ProcessStatus.Completed)
+            return node is not null && node.Id.Contains("reject", StringComparison.OrdinalIgnoreCase)
+                ? new ProcessRejected(businessKey, now)
+                : new ProcessCompleted(businessKey, now);
+        throw new InvalidOperationException($"Unexpected status for terminal: {status}");
     }
 
-    /// <summary>Recompute thuần từ nhật ký: user task chưa hoàn thành đầu tiên = đang hoạt động; gateway giải bằng decision.</summary>
-    private static (ProcessStatus, BpmnNode?) Compute(BpmnDefinition def, IReadOnlyList<CompletionEntry> completions)
+    private static (ProcessStatus, List<BpmnNode>) Compute(BpmnDefinition def, IReadOnlyList<CompletionEntry> completions)
     {
-        var stop = def.NextStop(def.StartNodeId);
+        var first = def.NextStop(def.StartNodeId);
+        if (first is null)
+            return (ProcessStatus.Completed, new List<BpmnNode>());
+
+        // Parallel fork
+        if (first.Kind == NodeKind.ParallelGateway)
+        {
+            var branches = def.NextStops(first.Id);
+            var activeTasks = new List<BpmnNode>();
+            foreach (var b in branches)
+            {
+                var done = completions.Any(c => c.TaskId == b.Id);
+                if (!done)
+                    activeTasks.Add(b);
+            }
+
+            if (activeTasks.Count > 0)
+                return (ProcessStatus.Running, activeTasks);
+
+            // All completed → join
+            var afterJoin = def.NextStop(first.Id); // qua join gateway → next
+            // walk past join
+            var joinNodeId = def.Outgoing(branches[0].Id).Select(f => f.TargetRef).FirstOrDefault() ?? "";
+            afterJoin = def.NextStop(joinNodeId);
+            if (afterJoin is { Kind: NodeKind.UserTask })
+                return (ProcessStatus.Running, new List<BpmnNode> { afterJoin });
+            return (ProcessStatus.Completed, afterJoin is not null ? new List<BpmnNode> { afterJoin } : new());
+        }
+
+        // Sequential
+        return ComputeLinear(def, completions, first);
+    }
+
+    private static (ProcessStatus, List<BpmnNode>) ComputeLinear(BpmnDefinition def, IReadOnlyList<CompletionEntry> completions, BpmnNode start)
+    {
+        var stop = start;
         var i = 0;
         while (stop is { Kind: NodeKind.UserTask })
         {
@@ -125,9 +178,9 @@ public sealed class ReplayEngineAdapter : IEngineAdapter
             }
             else
             {
-                return (ProcessStatus.Running, stop);
+                return (ProcessStatus.Running, new List<BpmnNode> { stop });
             }
         }
-        return (ProcessStatus.Completed, stop); // stop = nút End (dùng để phân biệt reject/complete)
+        return (ProcessStatus.Completed, stop is not null ? new List<BpmnNode> { stop } : new());
     }
 }

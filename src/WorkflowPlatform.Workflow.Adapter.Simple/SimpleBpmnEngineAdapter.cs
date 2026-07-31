@@ -6,18 +6,13 @@ using WorkflowPlatform.Workflow.Bpmn;
 
 namespace WorkflowPlatform.Workflow.Adapter.Simple;
 
-/// <summary>
-/// Engine BPMN tối giản (MVP): thực thi quy trình tuyến tính từ BPMN 2.0 XML.
-/// Lưu CHỈ trạng thái tiến trình + businessKey (correlation) — KHÔNG business data (điều kiện C2).
-/// Đây là adapter thứ nhất; thêm adapter engine khác (Camunda/Flowable) không đụng domain (chứng minh tháo lắp).
-/// </summary>
 public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
 {
     private sealed class Instance
     {
         public required string BusinessKey { get; init; }
         public required string DefinitionKey { get; init; }
-        public string? CurrentTaskId { get; set; }
+        public HashSet<string> CurrentTaskIds { get; } = new();
         public ProcessStatus Status { get; set; } = ProcessStatus.Running;
     }
 
@@ -49,9 +44,18 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
         _instances[command.BusinessKey] = instance;
 
         var firstStop = def.NextStop(def.StartNodeId);
-        if (firstStop is { Kind: NodeKind.UserTask })
+        if (firstStop is { Kind: NodeKind.ParallelGateway })
         {
-            instance.CurrentTaskId = firstStop.Id;
+            var parallel = def.NextStops(firstStop.Id);
+            foreach (var t in parallel)
+            {
+                instance.CurrentTaskIds.Add(t.Id);
+                events.Add(new TaskCreated(command.BusinessKey, t.Id, t.Name, t.Assignee, now));
+            }
+        }
+        else if (firstStop is { Kind: NodeKind.UserTask })
+        {
+            instance.CurrentTaskIds.Add(firstStop.Id);
             events.Add(new TaskCreated(command.BusinessKey, firstStop.Id, firstStop.Name, firstStop.Assignee, now));
         }
         else
@@ -71,7 +75,7 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
             throw new InvalidOperationException("Tiến trình đã kết thúc.");
 
         instance.Status = ProcessStatus.Cancelled;
-        instance.CurrentTaskId = null;
+        instance.CurrentTaskIds.Clear();
         return new List<WorkflowEvent> { new ProcessCancelled(businessKey, DateTimeOffset.UtcNow) };
     }
 
@@ -81,9 +85,9 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
             throw new InvalidOperationException($"Không tìm thấy tiến trình cho '{command.BusinessKey}'.");
         if (instance.Status != ProcessStatus.Running)
             throw new InvalidOperationException("Tiến trình đã kết thúc.");
-        if (instance.CurrentTaskId != command.TaskId)
+        if (!instance.CurrentTaskIds.Contains(command.TaskId))
             throw new InvalidOperationException(
-                $"Task '{command.TaskId}' không phải task đang hoạt động ('{instance.CurrentTaskId}').");
+                $"Task '{command.TaskId}' không phải task đang hoạt động.");
 
         var def = _definitions[instance.DefinitionKey];
         var now = DateTimeOffset.UtcNow;
@@ -91,17 +95,46 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
         var taskName = def.Nodes.TryGetValue(command.TaskId, out var completedNode) ? completedNode.Name : command.TaskId;
         var events = new List<WorkflowEvent> { new TaskCompleted(command.BusinessKey, command.TaskId, taskName, command.Actor, decision, now) };
 
+        instance.CurrentTaskIds.Remove(command.TaskId);
+
+        // Kiểm tra xem node vừa complete có nối vào join gateway không
         var next = def.NextStop(command.TaskId, _ => decision);
-        if (next is { Kind: NodeKind.UserTask })
+        bool directToJoin = next is { Kind: NodeKind.ParallelGateway };
+
+        if (instance.CurrentTaskIds.Count > 0)
         {
-            instance.CurrentTaskId = next.Id;
-            events.Add(new TaskCreated(command.BusinessKey, next.Id, next.Name, next.Assignee, now));
+            // Còn task song song — chỉ báo completed, không advance
+            return events;
+        }
+
+        // Tất cả task song song đã xong → join → advance
+        if (directToJoin)
+        {
+            var afterJoin = def.NextStop(next!.Id);
+            if (afterJoin is { Kind: NodeKind.UserTask })
+            {
+                instance.CurrentTaskIds.Add(afterJoin.Id);
+                events.Add(new TaskCreated(command.BusinessKey, afterJoin.Id, afterJoin.Name, afterJoin.Assignee, now));
+            }
+            else
+            {
+                instance.Status = ProcessStatus.Completed;
+                events.Add(Terminal(command.BusinessKey, afterJoin, now));
+            }
         }
         else
         {
-            instance.CurrentTaskId = null;
-            instance.Status = ProcessStatus.Completed;
-            events.Add(Terminal(command.BusinessKey, next, now));
+            // Luồng tuần tự — như cũ
+            if (next is { Kind: NodeKind.UserTask })
+            {
+                instance.CurrentTaskIds.Add(next.Id);
+                events.Add(new TaskCreated(command.BusinessKey, next.Id, next.Name, next.Assignee, now));
+            }
+            else
+            {
+                instance.Status = ProcessStatus.Completed;
+                events.Add(Terminal(command.BusinessKey, next, now));
+            }
         }
 
         return events;
@@ -113,9 +146,11 @@ public sealed class SimpleBpmnEngineAdapter : IEngineAdapter
             return new ProcessStateView(businessKey, string.Empty, ProcessStatus.NotFound, Array.Empty<TaskView>());
 
         var def = _definitions[instance.DefinitionKey];
-        var active = instance.CurrentTaskId is { } tid && def.Nodes.TryGetValue(tid, out var node)
-            ? new[] { new TaskView(node.Id, node.Name) }
-            : Array.Empty<TaskView>();
+        var active = instance.CurrentTaskIds
+            .Select(tid => def.Nodes.TryGetValue(tid, out var n) ? new TaskView(n.Id, n.Name) : null)
+            .Where(v => v is not null)
+            .Select(v => v!)
+            .ToList();
 
         return new ProcessStateView(businessKey, instance.DefinitionKey, instance.Status, active);
     }

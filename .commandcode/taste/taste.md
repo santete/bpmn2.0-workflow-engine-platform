@@ -2,3 +2,4 @@
 - Communicates in Vietnamese and expects responses in Vietnamese. Confidence: 0.9
 - Prefers iterative, milestone-driven development workflow: checks current project status and milestone position, then proceeds with the next incremental feature. Confidence: 0.8
 - When presented with feature options, favors the recommended/default choice over more ambitious alternatives. Confidence: 0.7
+- Khi được đưa một danh sách các tính năng còn lại trong milestone, muốn làm tuần tự từ trên xuống dưới theo đúng thứ tự liệt kê, không cần hỏi chọn lại. Confidence: 0.7

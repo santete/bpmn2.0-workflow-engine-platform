@@ -141,6 +141,59 @@ public abstract class EngineContractTestsBase
     }
 }
 
+public abstract class ParallelEngineContractTestsBase
+{
+    protected abstract IEngineAdapter CreateEngine();
+
+    private IEngineAdapter Deployed()
+    {
+        var engine = CreateEngine();
+        engine.Deploy(new CanonicalBpmn("parallel", TestBpmn.ParallelFork));
+        return engine;
+    }
+
+    [Fact]
+    public void Fork_creates_two_active_tasks()
+    {
+        var engine = Deployed();
+        var events = engine.Start(new StartProcessCommand("parallel", "P1",
+            new Dictionary<string, ProcessVariable>(), "x"));
+        var created = events.OfType<TaskCreated>().ToList();
+        Assert.Equal(2, created.Count);
+        Assert.Contains(created, c => c.TaskId == "taskA");
+        Assert.Contains(created, c => c.TaskId == "taskB");
+    }
+
+    [Fact]
+    public void Completing_one_forked_task_leaves_other_running()
+    {
+        var engine = Deployed();
+        engine.Start(new StartProcessCommand("parallel", "P2",
+            new Dictionary<string, ProcessVariable>(), "x"));
+
+        var events = engine.CompleteTask(new CompleteTaskCommand("P2", "taskA",
+            new Dictionary<string, ProcessVariable>(), "a"));
+        Assert.Single(events.OfType<TaskCompleted>());
+        Assert.DoesNotContain(events, e => e is TaskCreated);
+        Assert.Equal(ProcessStatus.Running, engine.GetState("P2").Status);
+    }
+
+    [Fact]
+    public void Completing_all_tasks_joins_and_ends()
+    {
+        var engine = Deployed();
+        engine.Start(new StartProcessCommand("parallel", "P3",
+            new Dictionary<string, ProcessVariable>(), "x"));
+        engine.CompleteTask(new CompleteTaskCommand("P3", "taskA",
+            new Dictionary<string, ProcessVariable>(), "a"));
+
+        var events = engine.CompleteTask(new CompleteTaskCommand("P3", "taskB",
+            new Dictionary<string, ProcessVariable>(), "b"));
+        Assert.Contains(events, e => e is ProcessCompleted);
+        Assert.Equal(ProcessStatus.Completed, engine.GetState("P3").Status);
+    }
+}
+
 public sealed class SimpleEngineContractTests : EngineContractTestsBase
 {
     protected override IEngineAdapter CreateEngine()
@@ -148,6 +201,19 @@ public sealed class SimpleEngineContractTests : EngineContractTestsBase
 }
 
 public sealed class ReplayEngineContractTests : EngineContractTestsBase
+{
+    protected override IEngineAdapter CreateEngine()
+        => new WorkflowPlatform.Workflow.Adapter.Replay.ReplayEngineAdapter(
+            new WorkflowPlatform.Workflow.Adapter.Replay.InMemoryReplayLogStore());
+}
+
+public sealed class SimpleParallelEngineContractTests : ParallelEngineContractTestsBase
+{
+    protected override IEngineAdapter CreateEngine()
+        => new WorkflowPlatform.Workflow.Adapter.Simple.SimpleBpmnEngineAdapter();
+}
+
+public sealed class ReplayParallelEngineContractTests : ParallelEngineContractTestsBase
 {
     protected override IEngineAdapter CreateEngine()
         => new WorkflowPlatform.Workflow.Adapter.Replay.ReplayEngineAdapter(
