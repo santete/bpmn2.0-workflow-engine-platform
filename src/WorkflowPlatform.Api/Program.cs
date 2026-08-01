@@ -35,7 +35,8 @@ builder.Services.AddSingleton<CancelBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CancelBackgroundService>());
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+    p.WithOrigins("http://localhost:5000", "http://localhost:3000", "http://127.0.0.1:5000")
+     .AllowAnyMethod().AllowAnyHeader()));
 
 if (persistence == "sqlite")
 {
@@ -265,7 +266,22 @@ app.MapGet("/processes/{key}/state", async (string key, IProcessPort wf) =>
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" }));
 
-app.MapGet("/health/ready", () => Results.Ok(new { status = "healthy" }));
+app.MapGet("/health/ready", async (IHostApplicationLifetime lifetime, IServiceProvider sp) =>
+{
+    try
+    {
+        if (sp.GetService<IDbContextFactory<AppDbContext>>() is { } factory)
+        {
+            using var ctx = await factory.CreateDbContextAsync();
+            await ctx.Database.CanConnectAsync();
+        }
+        return Results.Ok(new { status = "healthy" });
+    }
+    catch
+    {
+        return Results.Json(new { status = "unhealthy", detail = "Database connection failed." }, statusCode: 503);
+    }
+});
 
 app.Run();
 

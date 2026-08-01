@@ -5,3 +5,4 @@
 - Khi được đưa một danh sách các tính năng còn lại trong milestone, muốn làm tuần tự từ trên xuống dưới theo đúng thứ tự liệt kê, không cần hỏi chọn lại. Confidence: 0.9
 - Sử dụng conventional commits với format `type(scope): description [AI]`, và tag `[AI]` ở cuối commit message để đánh dấu commit do AI tạo. Confidence: 0.85
 - Áp dụng TDD-first: viết test fail trước, sau đó implement, chạy test riêng lẻ rồi chạy full suite. Confidence: 0.8
+- Sau khi hoàn thành một tập milestone, muốn làm self-check/review có cấu trúc trước khi tiếp tục, đánh giá theo 4 trục: business, performance, security, reliability. Mỗi item được gán trạng thái ✅/⚠️/❌ và ưu tiên hành động. Confidence: 0.85

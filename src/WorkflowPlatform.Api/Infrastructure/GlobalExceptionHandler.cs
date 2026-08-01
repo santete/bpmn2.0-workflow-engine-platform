@@ -23,7 +23,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             type = $"https://tools.ietf.org/html/rfc9110#section-15.5.{status - 200}",
             title,
             status,
-            detail = ex.Message,
+            detail = status == 500 ? "An unexpected error occurred." : title,
             traceId = ctx.TraceIdentifier
         }, ct);
 
