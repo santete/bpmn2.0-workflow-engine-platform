@@ -4,7 +4,17 @@
       "Shell(dotnet:*)",
       "Shell(git init -b main 2>&1 && git add -A 2>&1 && git -c user.name=\"dev\" -c user.email=\"dev@local\" commit -m \"chore: baseline M3 walking skeleton\" -q 2>&1; git log --oneline 2>&1)",
       "Shell(git:*)",
-      "Shell(findstr:*)"
+      "Shell(findstr:*)",
+      "Shell(curl -s http://localhost:5000/cases 2>&1)",
+      "Shell(curl -s http://localhost:5000/ 2>&1)",
+      "Shell(start:*)",
+      "Shell(curl -s -X POST http://localhost:5000/cases -H \"Content-Type: application/json\" -H \"X-User: tester\" -d \"{\"\"title\"\":\"\"Hồ sơ demo số 1\"\"}\" 2>&1)",
+      "Shell(curl -s http://localhost:5000/cases/df58466c-b2e1-4157-b3e7-dde97e8c078d 2>&1)",
+      "Shell(curl -s -X POST http://localhost:5000/cases/df58466c-b2e1-4157-b3e7-dde97e8c078d/complete-task -H \"Content-Type: application/json\" -H \"X-User: thamdinh\" -d \"{\\\"taskId\\\":\\\"review\\\"}\" 2>&1)",
+      "Shell(curl -s http://localhost:5000/health/live 2 >& 1)",
+      "Shell(curl -s http://localhost:5000/health/ready 2 >& 1)",
+      "Shell(curl -s http://localhost:5000/cases/df58466c-b2e1-4157-b3e7-dde97e8c078d/history 2 >& 1)",
+      "Shell(curl -s http://localhost:5000/ --head 2 >& 1)"
     ],
     "deny": [],
     "defaultMode": "default"

@@ -1,239 +1,469 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nền tảng Workflow — MVP</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Workflow Platform · Enterprise</title>
 <style>
   :root{
-    --ink:#151b24; --muted:#69747f; --paper:#eef1f5; --surface:#fff; --line:#d5dce4;
-    --steel:#1f4e6b; --steel-soft:#e7eef3; --brass:#b5852e; --brass-soft:#f4ecda;
-    --good:#2f7a57; --good-soft:#e2efe8; --warn:#b37a1e; --warn-soft:#f6ecd8;
-    --crit:#ae3f3c; --crit-soft:#f6e2e1;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-    --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+    --primary:#1565c0; --primary-dark:#0d47a1; --primary-light:#bbdefb;
+    --accent:#ef6c00; --accent-light:#ffe0b2;
+    --success:#2e7d32; --success-bg:#e8f5e9;
+    --warning:#e65100; --warning-bg:#fff3e0;
+    --error:#c62828; --error-bg:#ffebee;
+    --info:#0277bd; --info-bg:#e1f5fe;
+    --surface:#fff; --background:#f5f7fa; --sidebar-bg:#1b2838;
+    --on-surface:#212121; --on-surface-variant:#5f6368;
+    --outline:#dadce0; --outline-variant:#e8eaed;
+    --sans:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+    --mono:"JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --radius:12px; --radius-sm:8px;
+    --shadow-sm:0 1px 3px rgba(0,0,0,.08); --shadow:0 4px 12px rgba(0,0,0,.1);
+    --shadow-lg:0 8px 30px rgba(0,0,0,.12);
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
-  .wrap{max-width:1080px;margin:0 auto;padding:26px 22px 60px}
-  header h1{margin:0;font-size:24px;letter-spacing:-.02em;color:var(--steel)}
-  header p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:75ch}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
-  @media(max-width:820px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
-  .card.full{grid-column:1/-1}
-  .card h2{margin:0 0 4px;font-size:15px;color:var(--steel)}
-  .card .hint{margin:0 0 14px;font-size:12px;color:var(--muted)}
-  label{font-size:12px;color:var(--muted);font-weight:600;display:block;margin-bottom:4px}
-  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
-  input:focus,select:focus{outline:2px solid var(--steel-soft);border-color:var(--steel)}
-  .row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
-  .row > div{flex:1 1 180px}
-  button{padding:9px 14px;border:1px solid transparent;border-radius:8px;font:inherit;font-weight:600;cursor:pointer;background:var(--steel);color:#fff}
-  button:hover{filter:brightness(1.07)} button:focus-visible{outline:2px solid var(--brass)}
-  button.ghost{background:#fff;color:var(--steel);border-color:var(--line)}
-  button.small{padding:5px 9px;font-size:12px}
-  button.ok{background:var(--good)} button.no{background:var(--crit)}
-  .step-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
-  .step-row .n{font-family:var(--mono);font-size:11px;color:var(--muted);width:20px;text-align:right}
-  .step-row input{flex:1}
-  .check{display:flex;gap:8px;align-items:center;margin:10px 0 14px}
-  .check input{width:auto}
-  .check label{margin:0;font-size:13px;color:var(--ink);font-weight:500}
-  table{width:100%;border-collapse:collapse;margin-top:6px}
-  th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
-  th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-  td .title{font-weight:600}
-  td .id{font-family:var(--mono);font-size:10.5px;color:var(--muted)}
-  .pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
-  .pill.n{background:var(--steel-soft);color:var(--steel)} .pill.g{background:var(--good-soft);color:var(--good)}
-  .pill.w{background:var(--warn-soft);color:var(--warn)} .pill.c{background:var(--crit-soft);color:var(--crit)}
-  .badge{display:inline-block;font-size:11px;background:var(--steel-soft);color:var(--steel);border-radius:6px;padding:2px 7px;margin:2px 3px 2px 0;font-family:var(--mono)}
-  .badge.dec{background:var(--brass-soft);color:#8a641d}
-  .def{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:9px}
-  .def .dn{font-weight:600}
-  .actions{display:flex;gap:7px;flex-wrap:wrap}
-  .empty{color:var(--muted);font-size:13.5px;padding:12px 0}
-  .flow{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);font-size:14px;line-height:1.6;background:var(--background);color:var(--on-surface);display:flex;min-height:100vh}
+  a{color:var(--primary);text-decoration:none}
+
+  /* ── Sidebar ── */
+  .sidebar{
+    width:260px;min-width:260px;background:var(--sidebar-bg);color:#e0e0e0;
+    display:flex;flex-direction:column;padding:20px 0;position:sticky;top:0;height:100vh;overflow-y:auto;z-index:10;
+  }
+  .sidebar .logo{padding:0 24px 24px;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#fff}
+  .sidebar .logo span{color:var(--accent)}
+  .sidebar nav{flex:1}
+  .sidebar nav a{
+    display:flex;align-items:center;gap:12px;padding:12px 24px;color:#90a4ae;
+    font-weight:500;font-size:13.5px;transition:all .15s;border-left:3px solid transparent;text-decoration:none;
+  }
+  .sidebar nav a:hover{background:rgba(255,255,255,.06);color:#e0e0e0}
+  .sidebar nav a.active{background:rgba(255,255,255,.08);color:#fff;border-left-color:var(--accent)}
+  .sidebar nav a .ico{font-size:18px;width:24px;text-align:center}
+  .sidebar .stats{padding:24px;border-top:1px solid rgba(255,255,255,.08);margin-top:auto}
+  .sidebar .stats .stat{display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#78909c}
+  .sidebar .stats .stat b{color:#b0bec5}
+
+  /* ── Main ── */
+  .main{flex:1;display:flex;flex-direction:column;overflow-x:hidden}
+  .topbar{
+    background:var(--surface);padding:14px 32px;display:flex;align-items:center;
+    justify-content:space-between;border-bottom:1px solid var(--outline);position:sticky;top:0;z-index:5;box-shadow:var(--shadow-sm);
+  }
+  .topbar h2{font-size:18px;font-weight:600;color:var(--primary-dark)}
+  .topbar .actions{display:flex;gap:12px;align-items:center}
+  .topbar .user{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--on-surface-variant)}
+
+  .content{padding:28px 32px;display:none}
+  .content.active{display:block}
+
+  /* ── Cards ── */
+  .stat-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+  .stat-card{
+    background:var(--surface);border-radius:var(--radius);padding:20px 24px;box-shadow:var(--shadow-sm);
+    border:1px solid var(--outline-variant);transition:box-shadow .2s;
+  }
+  .stat-card:hover{box-shadow:var(--shadow)}
+  .stat-card .label{font-size:12px;color:var(--on-surface-variant);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:6px}
+  .stat-card .value{font-size:28px;font-weight:700;letter-spacing:-.02em}
+  .stat-card .value.primary{color:var(--primary)} .stat-card .value.success{color:var(--success)}
+  .stat-card .value.warning{color:var(--warning)} .stat-card .value.error{color:var(--error)}
+  .stat-card .sublabel{font-size:12px;color:var(--on-surface-variant);margin-top:4px}
+
+  .card{
+    background:var(--surface);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm);
+    border:1px solid var(--outline-variant);margin-bottom:20px;
+  }
+  .card h3{font-size:15px;font-weight:600;margin-bottom:16px;color:var(--primary-dark)}
+  .card .hint{font-size:12px;color:var(--on-surface-variant);margin-bottom:16px}
+
+  /* ── Forms ── */
+  label{font-size:12px;color:var(--on-surface-variant);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+  input[type=text],input[type=search],select,textarea{
+    width:100%;padding:10px 14px;border:1.5px solid var(--outline);border-radius:var(--radius-sm);font:inherit;
+    font-size:13.5px;background:var(--surface);transition:border-color .2s;color:var(--on-surface);
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-light)}
+  .form-row{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+  .form-row>div{flex:1 1 160px}
+
+  /* ── Buttons ── */
+  button,.btn{
+    display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border:none;border-radius:var(--radius-sm);
+    font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.03em;
+  }
+  .btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark);box-shadow:var(--shadow)}
+  .btn-accent{background:var(--accent);color:#fff}.btn-accent:hover{filter:brightness(1.1)}
+  .btn-success{background:var(--success);color:#fff}
+  .btn-error{background:var(--error);color:#fff}
+  .btn-outline{background:transparent;color:var(--primary);border:1.5px solid var(--primary)}.btn-outline:hover{background:var(--primary-light)}
+  .btn-ghost{background:transparent;color:var(--on-surface-variant);border:1.5px solid var(--outline)}.btn-ghost:hover{background:var(--outline-variant)}
+  .btn-sm{padding:6px 12px;font-size:12px;text-transform:none;letter-spacing:0}
+  .btn-icon{width:36px;height:36px;padding:0;justify-content:center;border-radius:50%}
+
+  /* ── Table ── */
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:left;padding:12px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--on-surface-variant);border-bottom:2px solid var(--outline);background:var(--background)}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--outline-variant)}
+  tbody tr:hover{background:var(--primary-light)}
+  .cell-title{font-weight:600}
+  .cell-id{font-family:var(--mono);font-size:11px;color:var(--on-surface-variant)}
+
+  /* ── Chips / Pills ── */
+  .chip{
+    display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:99px;
+    font-size:11.5px;font-weight:700;white-space:nowrap;letter-spacing:.02em;
+  }
+  .chip-info{background:var(--info-bg);color:var(--info)}
+  .chip-success{background:var(--success-bg);color:var(--success)}
+  .chip-warning{background:var(--warning-bg);color:var(--warning)}
+  .chip-error{background:var(--error-bg);color:var(--error)}
+  .chip-default{background:var(--outline-variant);color:var(--on-surface-variant)}
+  .chip-accent{background:var(--accent-light);color:var(--accent)}
+
+  .badge{
+    display:inline-block;font-size:11px;background:var(--primary-light);color:var(--primary);
+    border-radius:6px;padding:3px 8px;margin:2px 4px 2px 0;font-family:var(--mono);font-weight:600;
+  }
+
+  /* ── Steps ── */
+  .step-list .step-item{
+    display:flex;align-items:center;gap:10px;margin-bottom:10px;
+    padding:10px 14px;background:var(--background);border-radius:var(--radius-sm);border:1px solid var(--outline-variant);
+  }
+  .step-item .step-num{
+    width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+    background:var(--primary);color:#fff;border-radius:50%;font-size:12px;font-weight:700;flex-shrink:0;
+  }
+  .step-item input{flex:1;border:none;background:transparent;font-size:13px;box-shadow:none}
+  .step-item input:focus{box-shadow:none}
+
+  /* ── Flow visualizer ── */
+  .flow-viz{display:flex;align-items:center;gap:0;flex-wrap:wrap;overflow-x:auto;padding:16px 0}
+  .flow-node{
+    display:flex;align-items:center;justify-content:center;width:44px;height:44px;
+    border-radius:50%;font-size:18px;flex-shrink:0;
+  }
+  .flow-node.start{background:var(--outline-variant);color:var(--on-surface-variant)}
+  .flow-node.task{background:var(--primary-light);color:var(--primary)}
+  .flow-node.gateway{background:var(--accent-light);color:var(--accent);transform:rotate(45deg)}
+  .flow-node.gateway span{transform:rotate(-45deg)}
+  .flow-node.end{background:var(--outline-variant);color:var(--on-surface-variant);border:2px solid var(--on-surface-variant)}
+  .flow-arrow{width:30px;height:2px;background:var(--outline);flex-shrink:0;position:relative}
+  .flow-arrow::after{content:'';position:absolute;right:-4px;top:-4px;border:5px solid transparent;border-left-color:var(--outline)}
+  .flow-label{font-size:10px;color:var(--on-surface-variant);white-space:nowrap;margin-top:4px}
+
+  /* ── Modal / Drawer ── */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:50;display:none;align-items:center;justify-content:center}
+  .overlay.show{display:flex}
+  .drawer{
+    position:fixed;top:0;right:0;width:420px;max-width:100vw;height:100vh;background:var(--surface);
+    box-shadow:var(--shadow-lg);z-index:60;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:24px;
+  }
+  .drawer.show{transform:translateX(0)}
+  .drawer h3{font-size:18px;margin-bottom:16px;color:var(--primary-dark)}
+  .drawer .close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--on-surface-variant)}
+
+  /* ── Timeline ── */
+  .timeline{position:relative;padding-left:28px}
+  .timeline::before{content:'';position:absolute;left:10px;top:0;bottom:0;width:2px;background:var(--outline)}
+  .timeline-item{position:relative;padding-bottom:16px}
+  .timeline-item::before{
+    content:'';position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;
+    background:var(--primary);border:2px solid var(--surface);
+  }
+  .timeline-item.completed::before{background:var(--success)}
+  .timeline-item.rejected::before{background:var(--error)}
+  .timeline-item .ts{font-size:11px;color:var(--on-surface-variant)}
+  .timeline-item .tl{font-weight:600;font-size:13px}
+
+  .search-bar{max-width:320px}
+  .empty-state{text-align:center;padding:40px;color:var(--on-surface-variant)}
+  .empty-state .ico{font-size:48px;margin-bottom:12px;opacity:.4}
+
+  @media(max-width:768px){
+    .sidebar{display:none}
+    .main{min-width:100%}
+    .content{padding:20px 16px}
+    .drawer{width:100%}
+  }
+
+  .flex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .mt-12{margin-top:12px}.mt-16{margin-top:16px}.mb-16{margin-bottom:16px}
+  .text-muted{color:var(--on-surface-variant);font-size:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Nền tảng điều phối quy trình — MVP</h1>
-    <p>Tự <b>định nghĩa quy trình</b> (các bước + có/không bước quyết định) ngay trên giao diện, không cần sửa code.
-       Hệ thống sinh BPMN 2.0 và nạp vào engine lúc chạy — cùng một domain/engine chạy được mọi quy trình.</p>
-  </header>
 
-  <div class="grid">
-    <!-- Designer -->
-    <div class="card">
-      <h2>① Thiết kế quy trình</h2>
-      <p class="hint">Thêm các bước theo thứ tự. Tùy chọn bước cuối là điểm quyết định Duyệt/Từ chối.</p>
-      <div><label>Tên quy trình</label><input id="def-name" placeholder="VD: Quy trình cấp phép" /></div>
-      <div style="margin-top:12px"><label>Các bước</label><div id="steps"></div>
-       <button type="button" class="ghost small" onclick="addStep()">+ Thêm bước</button></div>
-      <p class="hint" style="margin-bottom:0">Mỗi bước có thể gán người thực hiện (tùy chọn).</p>
-      <div class="check">
-        <input type="checkbox" id="def-decision" checked />
-        <label for="def-decision">Bước cuối là quyết định (Duyệt / Từ chối) — sinh cổng rẽ nhánh</label>
-      </div>
-      <button onclick="saveDef()">Lưu &amp; nạp quy trình</button>
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="logo">⚙ Workflow<span>Platform</span></div>
+  <nav>
+    <a href="#" data-tab="dashboard" class="active"><span class="ico">◫</span> Dashboard</a>
+    <a href="#" data-tab="designer"><span class="ico">⊞</span> Thiết kế quy trình</a>
+    <a href="#" data-tab="cases"><span class="ico">☰</span> Hồ sơ</a>
+    <a href="#" data-tab="monitor"><span class="ico">◉</span> Giám sát</a>
+  </nav>
+  <div class="stats">
+    <div class="stat"><span>Engine</span> <b id="engine-name">—</b></div>
+    <div class="stat"><span>API</span> <b class="chip chip-success" style="font-size:10px;padding:2px 8px">● Live</b></div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="page-title">Dashboard</h2>
+    <div class="actions">
+      <input type="text" id="actor-name" class="search-bar" placeholder="👤 Người thao tác (VD: thamdinh)" style="padding:8px 14px;font-size:13px;max-width:220px"/>
+      <span class="user" id="health-dot">🟢 Online</span>
     </div>
+  </div>
 
-    <!-- Definitions list + create case -->
+  <!-- TAB: Dashboard -->
+  <div class="content active" id="tab-dashboard">
+    <div class="stat-cards" id="stats"></div>
+    <div class="card"><h3>Quy trình đã nạp</h3><div id="defs-flow"></div></div>
+    <div class="card"><h3>Hoạt động gần đây</h3><div id="recent-activity" class="text-muted">Đang tải...</div></div>
+  </div>
+
+  <!-- TAB: Designer -->
+  <div class="content" id="tab-designer">
     <div class="card">
-      <h2>② Quy trình hiện có</h2>
-      <p class="hint">Nạp sẵn vào engine. Chọn một quy trình để mở hồ sơ chạy theo nó.</p>
-      <div id="defs"></div>
-      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-        <div class="row">
-          <div><label>Quy trình áp dụng</label><select id="case-def"></select></div>
-          <div><label>Tiêu đề hồ sơ</label><input id="case-title" placeholder="VD: Hồ sơ số 01" /></div>
-        </div>
-        <button onclick="createCase()">Tạo hồ sơ &amp; khởi động</button>
+      <h3>Thiết kế quy trình mới</h3>
+      <div class="form-row"><div><label>Tên quy trình</label><input id="def-name" placeholder="VD: Quy trình cấp phép"/></div></div>
+      <label>Các bước</label>
+      <div class="step-list" id="steps"></div>
+      <button class="btn-ghost btn-sm mt-12" onclick="addStep()">+ Thêm bước</button>
+      <div class="flex mt-12" style="gap:16px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0">
+          <input type="checkbox" id="def-decision" checked/> Bước cuối là quyết định (Duyệt / Từ chối)
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0">
+          <input type="checkbox" id="def-parallel"/> Bước đầu là song song (Fork 2 nhánh)
+        </label>
+      </div>
+      <button class="btn-primary mt-16" onclick="saveDef()">Lưu & Nạp quy trình</button>
+    </div>
+    <div class="card"><h3>Quy trình hiện có</h3><div id="defs"></div></div>
+  </div>
+
+  <!-- TAB: Cases -->
+  <div class="content" id="tab-cases">
+    <div class="card" style="padding:16px 24px">
+      <div class="form-row" style="margin-bottom:0">
+        <div><label>Quy trình</label><select id="case-def"></select></div>
+        <div><label>Tiêu đề hồ sơ</label><input id="case-title" placeholder="VD: Hồ sơ số 01"/></div>
+        <div style="align-self:flex-end"><button class="btn-accent" onclick="createCase()">Tạo hồ sơ & Khởi động</button></div>
       </div>
     </div>
-
-    <!-- Cases -->
-    <div class="card full">
-      <h2>③ Hồ sơ đang chạy</h2>
-      <div class="row">
-        <div><label>Người thao tác</label><input id="actor-name" placeholder="VD: thamdinh" /></div>
+    <div class="card" style="padding:16px 24px">
+      <div class="flex" style="justify-content:space-between">
+        <h3 style="margin-bottom:0">Danh sách hồ sơ</h3>
+        <input type="search" id="case-filter" placeholder="🔍 Lọc..." class="search-bar" style="max-width:200px" oninput="renderCases()"/>
       </div>
-      <div id="list"></div>
+      <div class="table-wrap mt-12"><table id="cases-table"><thead><tr><th>Hồ sơ</th><th>Quy trình</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Người TH</th><th>Thao tác</th></tr></thead><tbody id="cases-tbody"></tbody></table></div>
+      <div class="empty-state" id="cases-empty" style="display:none"><div class="ico">📋</div>Chưa có hồ sơ nào. Tạo hồ sơ ở trên để bắt đầu.</div>
+    </div>
+  </div>
+
+  <!-- TAB: Monitor -->
+  <div class="content" id="tab-monitor">
+    <div class="stat-cards">
+      <div class="stat-card"><div class="label">Health</div><div class="value success" id="hlth-live">—</div><div class="sublabel">Liveness</div></div>
+      <div class="stat-card"><div class="label">Ready</div><div class="value success" id="hlth-ready">—</div><div class="sublabel">Readiness</div></div>
+    </div>
+    <div class="card"><h3>API Endpoints</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Method</th><th>Endpoint</th><th>Mô tả</th></tr></thead>
+        <tbody>
+          <tr><td><span class="chip chip-info">GET</span></td><td class="cell-id">/health/live</td><td>Liveness probe</td></tr>
+          <tr><td><span class="chip chip-info">GET</span></td><td class="cell-id">/health/ready</td><td>Readiness probe + DB check</td></tr>
+          <tr><td><span class="chip chip-info">GET</span></td><td class="cell-id">/cases</td><td>Danh sách hồ sơ (có phân quyền)</td></tr>
+          <tr><td><span class="chip chip-accent">POST</span></td><td class="cell-id">/cases</td><td>Tạo hồ sơ mới</td></tr>
+          <tr><td><span class="chip chip-accent">POST</span></td><td class="cell-id">/cases/{id}/complete-task</td><td>Hoàn thành bước (có ETag + enforce)</td></tr>
+          <tr><td><span class="chip chip-accent">POST</span></td><td class="cell-id">/cases/{id}/cancel</td><td>Hủy tiến trình (async 202)</td></tr>
+          <tr><td><span class="chip chip-info">GET</span></td><td class="cell-id">/cases/{id}/history</td><td>Lịch sử tiến trình</td></tr>
+          <tr><td><span class="chip chip-info">GET</span></td><td class="cell-id">/cases/{id}/history/verify</td><td>Kiểm tra toàn vẹn audit trail</td></tr>
+        </tbody>
+      </table></div>
     </div>
   </div>
 </div>
 
+<!-- ── HISTORY DRAWER ── -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <button class="close" onclick="closeDrawer()">✕</button>
+  <h3>Lịch sử tiến trình</h3>
+  <div class="timeline" id="timeline"></div>
+</div>
+
 <script>
-let defs = [], defsByKey = {};
+let defs=[],defsByKey={},cases=[],versionById={},currentTab='dashboard';
+const esc=s=>(s||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-function esc(s){ return (s||"").replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-const bizPill = s => ({Approved:"g",Rejected:"c",InReview:"w"}[s]||"n");
-const wfPill  = s => (s==="Hoan tat"?"g":s==="Tu choi"?"c":s==="Khoi tao"?"n":"w");
+// ── TABS ──
+document.querySelectorAll('.sidebar nav a').forEach(a=>a.addEventListener('click',e=>{
+  e.preventDefault(); const t=a.dataset.tab;
+  document.querySelectorAll('.sidebar nav a').forEach(x=>x.classList.remove('active'));
+  a.classList.add('active');currentTab=t;
+  document.querySelectorAll('.content').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('page-title').textContent={dashboard:'Dashboard',designer:'Thiết kế quy trình',cases:'Hồ sơ',monitor:'Giám sát'}[t];
+  if(t==='dashboard')loadDashboard();if(t==='monitor')loadMonitor();
+}));
 
-/* ---- Designer ---- */
-function addStep(value, assignee){
-  const box = document.getElementById("steps");
-  const i = box.children.length + 1;
-  const row = document.createElement("div");
-  row.className = "step-row";
-  row.innerHTML = `<span class="n">${i}.</span>
-    <input class="sname" placeholder="Tên bước ${i}" value="${esc(value||"")}" />
-    <input class="sass" placeholder="Người thực hiện" value="${esc(assignee||"")}" style="max-width:160px" />
-    <button type="button" class="ghost small" onclick="this.parentElement.remove();renumber()">✕</button>`;
+// ── DESIGNER ──
+function addStep(value,assignee){
+  const box=document.getElementById('steps'),i=box.children.length+1;
+  const row=document.createElement('div');row.className='step-item';
+  row.innerHTML=`<span class="step-num">${i}</span>
+    <input class="sname" placeholder="Tên bước ${i}" value="${esc(value||'')}" style="flex:3"/>
+    <input class="sass" placeholder="Người thực hiện" value="${esc(assignee||'')}" style="flex:2"/>
+    <button class="btn-ghost btn-sm" onclick="this.parentElement.remove();renumber()" style="border:none">✕</button>`;
   box.appendChild(row);
 }
-function renumber(){ [...document.querySelectorAll('#steps .step-row .n')].forEach((n,i)=>n.textContent=(i+1)+"."); }
+function renumber(){[...document.querySelectorAll('#steps .step-item .step-num')].forEach((n,i)=>n.textContent=i+1);}
 
 async function saveDef(){
-  const name = document.getElementById("def-name").value.trim();
-  const rows = [...document.querySelectorAll('#steps .step-row')];
-  const steps = rows.map(r=>r.querySelector('.sname').value.trim()).filter(Boolean);
-  const assignees = rows.map(r=>r.querySelector('.sass').value.trim()||null);
-  if (!steps.length){ alert("Cần ít nhất một bước."); return; }
-  const endsWithDecision = document.getElementById("def-decision").checked;
-  const r = await fetch("/definitions", {method:"POST",headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ name, steps, endsWithDecision, assignees })});
-  if (!r.ok){ alert("Lỗi tạo quy trình"); return; }
-  document.getElementById("def-name").value = "";
-  document.getElementById("steps").innerHTML = ""; addStep("",""); addStep("","");
+  const name=document.getElementById('def-name').value.trim();
+  const rows=[...document.querySelectorAll('#steps .step-item')];
+  const steps=rows.map(r=>r.querySelector('.sname').value.trim()).filter(Boolean);
+  const assignees=rows.map(r=>r.querySelector('.sass').value.trim()||null);
+  if(!steps.length){alert('Cần ít nhất một bước.');return}
+  const endsWithDecision=document.getElementById('def-decision').checked;
+  const r=await fetch('/definitions',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name,steps,endsWithDecision,assignees})});
+  if(!r.ok){alert('Lỗi tạo quy trình');return}
+  document.getElementById('def-name').value='';
+  document.getElementById('steps').innerHTML='';addStep('','');addStep('','');
   await loadDefs();
 }
 
 function renderDefs(){
-  const el = document.getElementById("defs");
-  if (!defs.length){ el.innerHTML = '<div class="empty">Chưa có quy trình.</div>'; return; }
-  el.innerHTML = defs.map(d => `<div class="def">
-    <div class="dn">${esc(d.name)}</div>
-    <div>${d.steps.map(s=>`<span class="badge">${esc(s.name)}</span>`).join("")}
-      ${d.endsWithDecision?'<span class="badge dec">◆ Duyệt/Từ chối</span>':''}</div>
-  </div>`).join("");
+  const el=document.getElementById('defs');
+  if(!defs.length){el.innerHTML='<div class="empty-state"><div class="ico">📐</div>Chưa có quy trình.</div>';return}
+  el.innerHTML=defs.map(d=>`<div style="padding:12px 16px;border:1px solid var(--outline-variant);border-radius:var(--radius-sm);margin-bottom:8px">
+    <div style="font-weight:600;margin-bottom:6px">${esc(d.name)} <span class="text-muted" style="font-weight:400;font-size:11px">(${d.key})</span></div>
+    <div class="flow-viz">
+      <div class="flow-node start">▶</div><div class="flow-arrow"></div>
+      ${d.steps.map((s,i)=>{
+        const active=i===d.steps.length-1&&d.endsWithDecision;
+        return `<div class="flow-node task">${esc(s.name[0])}</div><div class="flow-label">${esc(s.name)}</div><div class="flow-arrow"></div>
+        ${active?`<div class="flow-node gateway"><span>◆</span></div><div class="flow-arrow"></div><div class="flow-node end">◼</div><span class="badge" style="background:var(--accent-light);color:var(--accent)">Duyệt/Từ chối</span>`:''}`;
+      }).join('')}
+      ${!d.endsWithDecision?`<div class="flow-node end">◼</div>`:''}
+    </div>
+    <div style="font-size:11px;color:var(--on-surface-variant);margin-top:4px">
+      ${d.steps.map(s=>s.assignee?`<span class="badge">👤 ${esc(s.assignee)}</span>`:'').join('')}
+    </div>
+  </div>`).join('');
 }
-function renderDefOptions(){
-  document.getElementById("case-def").innerHTML =
-    defs.map(d=>`<option value="${esc(d.key)}">${esc(d.name)}</option>`).join("");
-}
+function renderDefOptions(){document.getElementById('case-def').innerHTML=defs.map(d=>`<option value="${esc(d.key)}">${esc(d.name)}</option>`).join('');}
 
-/* ---- Cases ---- */
+// ── CASES ──
 async function createCase(){
-  const key = document.getElementById("case-def").value;
-  const title = document.getElementById("case-title").value.trim() || "Hồ sơ mới";
-  await fetch("/cases",{method:"POST",headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ title, definitionKey: key })});
-  document.getElementById("case-title").value = "";
-  loadCases();
+  const key=document.getElementById('case-def').value;
+  const title=document.getElementById('case-title').value.trim()||'Hồ sơ mới';
+  const actor=document.getElementById('actor-name').value.trim();
+  const headers={'Content-Type':'application/json'};if(actor)headers['X-User']=actor;
+  await fetch('/cases',{method:'POST',headers,body:JSON.stringify({title,definitionKey:key})});
+  document.getElementById('case-title').value='';loadCases();
 }
-async function complete(id, taskId, decision){
-  const version = versionById[id];
-  const actor = document.getElementById("actor-name").value.trim();
-  const headers = {"Content-Type":"application/json"};
-  if (version) headers["If-Match"] = '"'+version+'"';
-  if (actor) headers["X-User"] = actor;
-  const r = await fetch(`/cases/${id}/complete-task`,{method:"POST",headers,
-    body: JSON.stringify({ taskId, decision })});
-  if (r.status === 403){ alert("Bạn không phải người được phân công cho bước này."); }
-  else if (r.status === 412){ alert("Hồ sơ đã bị thay đổi bởi người khác. Vui long tai lai trang."); }
+async function complete(id,taskId,decision){
+  const version=versionById[id];const actor=document.getElementById('actor-name').value.trim();
+  const headers={'Content-Type':'application/json'};
+  if(version)headers['If-Match']='"'+version+'"';if(actor)headers['X-User']=actor;
+  const r=await fetch(`/cases/${id}/complete-task`,{method:'POST',headers,body:JSON.stringify({taskId,decision})});
+  if(r.status===403){alert('Bạn không phải người được phân công cho bước này.')}
+  else if(r.status===412){alert('Hồ sơ đã bị thay đổi bởi người khác. Vui lòng tải lại trang.')}
   loadCases();
 }
 async function cancelCase(id){
-  if (!confirm("Huy ho so nay?")) return;
-  const r = await fetch(`/cases/${id}/cancel`,{method:"POST"});
-  if (r.status === 409){ alert("Ho so da ket thuc, khong the huy."); }
-  loadCases();
+  if(!confirm('Hủy hồ sơ này?'))return;
+  await fetch(`/cases/${id}/cancel`,{method:'POST'});loadCases();
 }
-let versionById = {};
-function actionsFor(c){
-  if (!c.currentTaskId) return `<span class="pill ${bizPill(c.businessStatus)}">${c.businessStatus}</span>`;
-  const spec = defsByKey[c.definitionKey];
-  const lastId = spec && spec.steps.length ? spec.steps[spec.steps.length-1].id : null;
-  const isDecision = spec && spec.endsWithDecision && c.currentTaskId === lastId;
-  if (isDecision)
-    return `<button class="ok small" onclick="complete('${c.id}','${c.currentTaskId}','APPROVED')">Duyệt</button>
-            <button class="no small" onclick="complete('${c.id}','${c.currentTaskId}','REJECTED')">Từ chối</button>`;
-  return `<button class="ghost small" onclick="complete('${c.id}','${c.currentTaskId}')">✓ ${esc(c.currentTaskName)}</button>`;
+async function showHistory(caseId){
+  const h=await(await fetch(`/cases/${caseId}/history`)).json();
+  const kindLabel={TaskCompleted:'Hoàn thành',ProcessCompleted:'Kết thúc',ProcessRejected:'Từ chối',ProcessCancelled:'Đã hủy'};
+  const kindClass={TaskCompleted:'completed',ProcessCompleted:'completed',ProcessRejected:'rejected',ProcessCancelled:'rejected'};
+  document.getElementById('timeline').innerHTML=h.map(e=>`<div class="timeline-item ${kindClass[e.kind]||''}">
+    <div class="tl">${kindLabel[e.kind]||e.kind}${e.taskName?`: ${esc(e.taskName)}`:''}</div>
+    <div class="ts">${e.actor?esc(e.actor)+' · ':''}${e.decision?'['+esc(e.decision)+'] · ':''}${new Date(e.occurredAt).toLocaleTimeString('vi-VN')}</div>
+  </div>`).join('');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
 }
-function renderCases(cases){
-  const el = document.getElementById("list");
-  if (!cases.length){ el.innerHTML = '<div class="empty">Chưa có hồ sơ. Tạo một hồ sơ ở mục ② để bắt đầu.</div>'; return; }
-  el.innerHTML = `<table><thead><tr>
-      <th>Hồ sơ</th><th>Quy trình</th><th>Trạng thái</th><th>Bước hiện tại</th><th>Người TH</th><th>Hành động</th><th></th>
-    </tr></thead><tbody>` + cases.map(c=>{
-      const dn = defsByKey[c.definitionKey]?.name || c.definitionKey;
-      return `<tr>
-        <td><div class="title">${esc(c.title)}</div><div class="id">${c.id.slice(0,8)}</div></td>
-        <td>${esc(dn)}</td>
-        <td><span class="pill ${wfPill(c.workflowStatus)}">${esc(c.workflowStatus)}</span></td>
-        <td>${c.currentTaskName?`<div class="flow">▸ ${esc(c.currentTaskName)}</div>`:"—"}</td>
-        <td>${c.currentTaskAssignee?`<span class="badge">${esc(c.currentTaskAssignee)}</span>`:"—"}</td>
-        <td><div class="actions">${actionsFor(c)}</div></td>
-        <td><button class="ghost small" onclick="showHistory('${c.id}',this)">Lịch sử</button>${c.currentTaskId?` <button class="ghost small no" onclick="cancelCase('${c.id}')">Hủy</button>`:""}</td>
-      </tr>`;}).join("") + `</tbody></table>`;
+function closeDrawer(){document.getElementById('overlay').classList.remove('show');document.getElementById('drawer').classList.remove('show');}
+
+function renderCases(){
+  const filter=(document.getElementById('case-filter')?.value||'').toLowerCase();
+  const filtered=cases.filter(c=>!filter||c.title.toLowerCase().includes(filter)||(c.currentTaskName||'').toLowerCase().includes(filter));
+  const tbody=document.getElementById('cases-tbody');
+  const empty=document.getElementById('cases-empty');
+  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';return}
+  empty.style.display='none';
+  tbody.innerHTML=filtered.map(c=>{
+    const dn=defsByKey[c.definitionKey]?.name||c.definitionKey;
+    const wfClass=c.workflowStatus==='Hoan tat'?'success':c.workflowStatus==='Tu choi'?'error':c.workflowStatus==='Khoi tao'?'default':'info';
+    const isDecision=defsByKey[c.definitionKey]?.endsWithDecision&&defsByKey[c.definitionKey]?.steps.slice(-1)[0]?.id===c.currentTaskId;
+    const btns=c.currentTaskId?isDecision?`<button class="btn-success btn-sm" onclick="complete('${c.id}','${c.currentTaskId}','APPROVED')">✓ Duyệt</button>
+      <button class="btn-error btn-sm" onclick="complete('${c.id}','${c.currentTaskId}','REJECTED')">✕ Từ chối</button>`
+      :`<button class="btn-primary btn-sm" onclick="complete('${c.id}','${c.currentTaskId}')">▶ ${esc(c.currentTaskName)}</button>`
+      :`<span class="chip chip-${wfClass}">${c.businessStatus||c.workflowStatus}</span>`;
+    return`<tr>
+      <td><div class="cell-title">${esc(c.title)}</div><div class="cell-id">${c.id.slice(0,8)}</div></td>
+      <td>${esc(dn)}</td>
+      <td><span class="chip chip-${wfClass}">${esc(c.workflowStatus)}</span></td>
+      <td>${c.currentTaskName?`<span style="font-size:12px">▸ ${esc(c.currentTaskName)}</span>`:'—'}</td>
+      <td>${c.currentTaskAssignee?`<span class="badge">${esc(c.currentTaskAssignee)}</span>`:'—'}</td>
+      <td><div class="flex">${btns}
+        <button class="btn-ghost btn-sm" onclick="showHistory('${c.id}')">📋 LS</button>
+        ${c.currentTaskId?`<button class="btn-ghost btn-sm" onclick="cancelCase('${c.id}')">✕ Hủy</button>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
 }
 
+// ── DASHBOARD ──
+function loadDashboard(){
+  const stats=document.getElementById('stats');
+  const total=cases.length, running=cases.filter(c=>c.currentTaskId).length,
+    done=cases.filter(c=>c.workflowStatus==='Hoan tat').length,
+    rejected=cases.filter(c=>c.workflowStatus==='Tu choi').length;
+  stats.innerHTML=`<div class="stat-card"><div class="label">Tổng hồ sơ</div><div class="value primary">${total}</div></div>
+    <div class="stat-card"><div class="label">Đang xử lý</div><div class="value warning">${running}</div></div>
+    <div class="stat-card"><div class="label">Hoàn thành</div><div class="value success">${done}</div></div>
+    <div class="stat-card"><div class="label">Từ chối</div><div class="value error">${rejected}</div></div>`;
+  document.getElementById('recent-activity').innerHTML=cases.slice(-5).reverse().map(c=>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--outline-variant);font-size:13px">${esc(c.title)} · <span class="chip chip-info">${esc(c.workflowStatus)}</span></div>`
+  ).join('')||'Chưa có hoạt động.';
+}
+
+// ── MONITOR ──
+async function loadMonitor(){
+  try{const r=await fetch('/health/live');document.getElementById('hlth-live').textContent=r.ok?'● Online':'✕ Error'}
+  catch{ document.getElementById('hlth-live').textContent='✕ Offline'}
+  try{const r=await fetch('/health/ready');document.getElementById('hlth-ready').textContent=r.ok?'● Ready':'✕ Unhealthy'}
+  catch{ document.getElementById('hlth-ready').textContent='✕ Down'}
+}
+
+// ── DATA ──
 async function loadDefs(){
-  defs = await (await fetch("/definitions")).json();
-  defsByKey = Object.fromEntries(defs.map(d=>[d.key,d]));
-  renderDefs(); renderDefOptions();
+  defs=await(await fetch('/definitions')).json();
+  defsByKey=Object.fromEntries(defs.map(d=>[d.key,d]));
+  renderDefs();renderDefOptions();document.getElementById('defs-flow').innerHTML=document.getElementById('defs').innerHTML;
 }
 async function loadCases(){
-  const cases = await (await fetch("/cases")).json();
-  versionById = {}; cases.forEach(c=>{ if (c.version) versionById[c.id] = c.version; });
-  renderCases(cases);
-}
-
-async function showHistory(caseId, btn){
-  const h = await (await fetch(`/cases/${caseId}/history`)).json();
-  const kindLabel = {TaskCompleted:"Hoàn thành",ProcessCompleted:"Kết thúc",ProcessRejected:"Từ chối"};
-  btn.insertAdjacentHTML("afterend",
-    `<div class="hist" style="margin:4px 0;padding:6px 10px;background:var(--steel-soft);border-radius:8px;font-size:12px">`
-    + h.map(e=>`<div style="padding:2px 0">${kindLabel[e.kind]||e.kind}: ${e.taskName||""} ${e.actor?"— "+e.actor:""} ${e.decision?"["+e.decision+"]":""}</div>`).join("")
-    + `<button class="ghost small" style="margin-top:4px" onclick="this.parentElement.remove()">Đóng</button></div>`);
+  cases=await(await fetch('/cases')).json();
+  versionById={};cases.forEach(c=>{if(c.version)versionById[c.id]=c.version});
+  renderCases();if(currentTab==='dashboard')loadDashboard();
 }
 
 // init
-addStep("Tham dinh","thamdinh"); addStep("Phe duyet","lanhdao");
+addStep('Thẩm định','thamdinh');addStep('Phê duyệt','lanhdao');
 loadDefs().then(loadCases);
 </script>
 </body>
