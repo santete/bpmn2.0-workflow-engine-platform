@@ -14,7 +14,13 @@
       "Shell(curl -s http://localhost:5000/health/live 2 >& 1)",
       "Shell(curl -s http://localhost:5000/health/ready 2 >& 1)",
       "Shell(curl -s http://localhost:5000/cases/df58466c-b2e1-4157-b3e7-dde97e8c078d/history 2 >& 1)",
-      "Shell(curl -s http://localhost:5000/ --head 2 >& 1)"
+      "Shell(curl -s http://localhost:5000/ --head 2 >& 1)",
+      "Shell(if:*)",
+      "Shell(npm:*)",
+      "Shell(del:*)",
+      "Shell(npx vite build 2 >& 1)",
+      "Shell(else:*)",
+      "Shell(curl -s http://localhost:5000/ 2 >& 1)"
     ],
     "deny": [],
     "defaultMode": "default"

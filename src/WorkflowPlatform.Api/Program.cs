@@ -35,7 +35,7 @@ builder.Services.AddSingleton<CancelBackgroundService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CancelBackgroundService>());
 builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:5000", "http://localhost:3000", "http://127.0.0.1:5000")
+    p.WithOrigins("http://localhost:5000", "http://localhost:3000", "http://127.0.0.1:5000", "http://localhost:5173")
      .AllowAnyMethod().AllowAnyHeader()));
 
 if (persistence == "sqlite")
@@ -67,8 +67,16 @@ var app = builder.Build();
 app.UseResponseCompression();
 app.UseCors();
 app.UseMiddleware<SecurityHeadersMiddleware>();
-app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseDefaultFiles(new DefaultFilesOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(app.Environment.ContentRootPath, "..", "WorkflowPlatform.Web", "dist"))
+});
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(app.Environment.ContentRootPath, "..", "WorkflowPlatform.Web", "dist"))
+});
 app.UseMiddleware<RateLimitMiddleware>();
 app.UseMiddleware<TraceIdMiddleware>();
 app.UseMiddleware<IdentityMiddleware>();

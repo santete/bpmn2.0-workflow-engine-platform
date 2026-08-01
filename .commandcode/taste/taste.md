@@ -6,4 +6,4 @@
 - Sử dụng conventional commits với format `type(scope): description [AI]`, và tag `[AI]` ở cuối commit message để đánh dấu commit do AI tạo. Confidence: 0.85
 - Áp dụng TDD-first: viết test fail trước, sau đó implement, chạy test riêng lẻ rồi chạy full suite. Confidence: 0.8
 - Sau khi hoàn thành một tập milestone, muốn làm self-check/review có cấu trúc trước khi tiếp tục, đánh giá theo 4 trục: business, performance, security, reliability. Mỗi item được gán trạng thái ✅/⚠️/❌ và ưu tiên hành động. Confidence: 0.85
-- Values polished, professional UI design — explicitly dissatisfied with bare-bones vanilla HTML+CSS MVP interfaces. Expects visually refined output with good typography, layout, and styling. Confidence: 0.7
+- Values polished, professional UI design — explicitly dissatisfied with bare-bones vanilla HTML+CSS MVP interfaces. Prefers Material Design combined with enterprise admin panel patterns (sidebar navigation, stat cards, data tables, timeline drawers, flow visualizers, chip/badge status components). Confidence: 0.85
